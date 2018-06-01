@@ -1,64 +1,17 @@
-# import numpy as np
-# import cv2
-#
-# cap = cv2.VideoCapture('vtest.avi')
-#
-# while(cap.isOpened()):
-#     ret, frame = cap.read()
-#     if ret:
-#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-#
-#     cv2.imshow('frame',gray)
-#     if cv2.waitKey(1) & 0xFF == ord('q'):
-#         print('ext')
-#         break
-#
-# cap.release()
-# cv2.destroyAllWindows()
-
 import numpy as np
 import cv2 as cv
-
+import pandas as pd
 from tqdm import tqdm
+
+from scipy.ndimage import measurements
 
 import yaml, os
 
 
 from time import sleep
 
-def load_video_info(filename):
-    """
-    loads the video metadata that has been exported with metainfo (www.MediaArea.net) into a json file
 
-    Args:
-        filename: path to the .avi or .xml file
-
-    Returns: ['FileSize', 'FrameRate', 'BitDepth', 'Width', 'Duration', 'FrameCount', 'Height', 'CodecID']
-
-    """
-    if len(filename.split('.avi'))==2:
-        filename = filename.replace('.avi', '.xml')
-
-    assert os.path.exists(filename)
-    print(filename)
-
-    with open(filename, 'r') as infile:
-        data = yaml.safe_load(infile)
-
-    data = data['media']['track']
-    info = {}
-    # select the relevant paramters
-    info = {key: data[0][key] for key in ['FrameRate', 'FrameCount', 'FileSize', 'Duration']}
-    info.update({key: data[1][key] for key in ['Width', 'Height', 'BitDepth', 'CodecID']})
-
-    # now convert to numbers
-    info.update({key: int(info[key]) for key in ['FrameCount', 'BitDepth', 'FileSize', 'Width', 'Height']})
-    info.update({key: float(info[key]) for key in ['FrameRate', 'Duration']})
-
-    return info
-
-
-
+from track_sphere.utils import *
 
 
 def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None, fourcc = None, output_images = 1000, buffer_time=1e-6):
@@ -115,7 +68,7 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
         fourcc = info['CodecID']
 
     assert isinstance(fourcc, str)
-    assert len(fourcc)==4
+    assert len(fourcc) == 4
 
     if max_frame is None:
         max_frame = info['FrameCount']
@@ -124,8 +77,9 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
     #### setup input and output streams
     ################################################################################
 
-    cap = cv.VideoCapture(file_in) #open input video
-    fgbg = cv.createBackgroundSubtractorMOG2() # create background substractor
+    cap = cv.VideoCapture(file_in, False) #open input video
+    # fgbg = cv.createBackgroundSubtractorMOG2(detectShadows=False, history=5000) # create background substractor
+    fgbg = cv.createBackgroundSubtractorMOG2()  # create background substractor
 
     if fourcc == 'FULL':
         # no compression
@@ -143,6 +97,11 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
     print('subtracting background: {:s} => {:s}'.format(file_in,file_out))
     print('frames {:d}-{:d} ({:d})'.format(min_frame, max_frame, max_frame-min_frame))
 
+
+    center_of_mass = []
+    mean = []
+    brightest_px = []
+
     for frame_idx in tqdm(range(max_frame)):
 
         ret, frame_in = cap.read()
@@ -158,12 +117,19 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
             # print('writing',frame_idx)
 
             cv.imwrite(os.path.join(img_dir,file_out.replace('.avi', '-{:d}.jpg'.format(frame_idx))), frame_out)
+            cv.imwrite(os.path.join(img_dir, file_out.replace('.avi', '-{:d}_initit.jpg'.format(frame_idx))), frame_in)
+
+        center_of_mass.append(measurements.center_of_mass(frame_out))
+        mean.append(np.mean(frame_out))
+        brightest_px.append(np.unravel_index(np.argmax(frame_in[:,:,0]), (info['Width'], info['Height'])))
+
 
 
 
         k = cv.waitKey(30) & 0xff
         if k == 27:
             break
+
 
     ################################################################################
     #### clean up
@@ -172,8 +138,31 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
     cap.release()
     cv.destroyAllWindows()
 
+    center_of_mass = np.array([list(elem) for elem in center_of_mass])
+
+    brightest_px = np.array(brightest_px)
+
+    df = pd.DataFrame.from_dict({
+        'center_of_mass x': center_of_mass[:,0],
+        'center_of_mass y': center_of_mass[:,1],
+        'bright x': brightest_px[:, 0],
+        'bright y': brightest_px[:, 1],
+
+        'mean': mean})
+
+    df.to_csv(file_out.replace('.avi','.dat'))
+
+
+
+
+
 
 if __name__ == '__main__':
     # substract_background('test.avi', file_out=None)
-    info = load_video_info('test.avi')
-    print(info)
+    # info = load_video_info('test.avi')
+    # print(info)
+
+    file_in = './raw_data/20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
+    file_out = './data/20180529_Sample6_bead_1_direct_thermal_01c_reencode-nobck.avi'
+    substract_background(file_in, file_out=file_out, max_frame=5000,output_images=100)
+
