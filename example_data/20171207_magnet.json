@@ -1,0 +1,44 @@
+{
+"media": {
+"@ref": "/Users/rettentulla/PycharmProjects/track_sphere/raw_data/20171207_middle_bead_biggest_hole_lev_flux_trap_new_cam977fps_smallRoI_directImage_2.avi",
+"track": [
+{
+"@type": "General",
+"VideoCount": "1",
+"FileExtension": "avi",
+"Format": "AVI",
+"FileSize": "50305910",
+"Duration": "10.251",
+"OverallBitRate": "39259320",
+"FrameRate": "975.609",
+"FrameCount": "10001",
+"StreamSize": "245272",
+"File_Modified_Date": "UTC 2017-12-07 16:45:13",
+"File_Modified_Date_Local": "2017-12-07 11:45:13"
+},
+{
+"@type": "Video",
+"StreamOrder": "0",
+"ID": "0",
+"Format": "JPEG",
+"CodecID": "MJPG",
+"Duration": "10.251",
+"BitRate": "39067780",
+"Width": "200",
+"Height": "200",
+"Sampled_Width": "200",
+"Sampled_Height": "200",
+"PixelAspectRatio": "1.000",
+"DisplayAspectRatio": "1.000",
+"FrameRate": "975.609",
+"FrameCount": "10001",
+"ColorSpace": "YUV",
+"ChromaSubsampling": "4:2:2",
+"BitDepth": "8",
+"Compression_Mode": "Lossy",
+"StreamSize": "50060638",
+"Title": "stream name"
+}
+]
+}
+}

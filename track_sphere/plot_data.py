@@ -7,7 +7,7 @@ from scipy.ndimage.filters import gaussian_filter
 from matplotlib.patches import Rectangle, Circle
 
 import numpy as np
-from camera_data import power_spectral_density, tracking_error
+from track_sphere.utils import power_spectral_density, tracking_error
 
 def plot_video_frame(file_path, frames, xy_position = None, gaussian_filter_width=None, xylim = None, roi = None, ax = None, radius = 3):
     """
