@@ -5,18 +5,16 @@ from tqdm import tqdm
 
 from scipy.ndimage import measurements
 
-import matplotlib.pyplot as plt
-
 
 from time import sleep
-
+import sys
 
 from track_sphere.utils import *
 
 
 
 
-def fit_ellipse(image, file_out=None, show_image=False):
+def fit_ellipse(image, return_image=False):
 
 
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
@@ -39,39 +37,46 @@ def fit_ellipse(image, file_out=None, show_image=False):
 
     ellipse = cv.fitEllipse(contour_magnet)
 
-    data_dict = {}
+
+    # data_dict = {}
+    # # we expect 5 bright spots
+    # for i in range(5):
+    #     if i<len(kp):
+    #         data_dict.update({
+    #             'k{:d} x'.format(i):kp[i].pt[0],
+    #             'k{:d} y'.format(i):kp[i].pt[1],
+    #             'k{:d} size'.format(i): kp[i].size,
+    #             'k{:d} angle'.format(i): kp[i].angle
+    #         })
+    #     else:
+    #         data_dict.update({
+    #             'k{:d} x'.format(i): None,
+    #             'k{:d} y'.format(i): None,
+    #             'k{:d} size'.format(i): None,
+    #             'k{:d} angle'.format(i): None
+    #         })
+    # data_dict.update({
+    #     'contour center x': cX,
+    #     'contour center y': cY})
+    #
+    # data_dict = {k:[v] for k, v in data_dict.items()}
+    #
+    #
+    # data = pd.DataFrame.from_dict(data_dict)
+
+    data = []
     # we expect 5 bright spots
     for i in range(5):
         if i<len(kp):
-            data_dict.update({
-                'k{:d} x'.format(i):kp[i].pt[0],
-                'k{:d} y'.format(i):kp[i].pt[1],
-                'k{:d} size'.format(i): kp[i].size,
-                'k{:d} angle'.format(i): kp[i].angle
-            })
+            data += [kp[i].pt[0], kp[i].pt[1], kp[i].size,kp[i].angle]
         else:
-            data_dict.update({
-                'k{:d} x'.format(i): None,
-                'k{:d} y'.format(i): None,
-                'k{:d} size'.format(i): None,
-                'k{:d} angle'.format(i): None
-            })
-    data_dict.update({
-        'contour center x': cX,
-        'contour center y': cY})
+            data += [None, None, None, None]
+    data += [cX, cY]
 
-    data_dict = {k:[v] for k, v in data_dict.items()}
-
-
-    data = pd.DataFrame.from_dict(data_dict)
-
-
-
-    if show_image:
-
+    if return_image:
         # bright spots on magnet
         for k in kp:
-            print(k.angle, k.size, k.pt, (int(k.pt[0]), int(k.pt[1])))
+            # print(k.angle, k.size, k.pt, (int(k.pt[0]), int(k.pt[1])))
             cv.circle(image, (int(k.pt[0]), int(k.pt[1])), 5, color=100)
         # outline of magnet contour
         cv.drawContours(image, [contour_magnet], -1, (0, 255, 0), 1)
@@ -79,9 +84,8 @@ def fit_ellipse(image, file_out=None, show_image=False):
         cv.circle(image, (cX, cY), 7, (0, 0, 255), -1)
         # outline of ellipse
         cv.ellipse(image, ellipse, (0, 0, 255), 1)
-
-        plt.imshow(image), plt.show()
-
+    else:
+        image = None
     return data, image
 
 
@@ -107,7 +111,7 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
 
         buffer_time:  wait time between frames, needed because of some buffer issues of opencv
 
-        method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px'
+        method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px', 'fit_ellipse'
         method_parameters: method specific parameters
 
     Returns:
@@ -187,7 +191,11 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
 
     if method == 'BackgroundSubtractorMOG2':
         # fgbg = cv.createBackgroundSubtractorMOG2(detectShadows=False, history=5000) # create background substractor
-        fgbg = cv.createBackgroundSubtractorMOG2()  # create background substractor
+        fgbg = cv.createBackgroundSubtractorMOG2()  # create background subtractor
+
+        # the names of the data we will extract
+        data_header = ['com x', 'com y', 'mean']
+
     elif method == 'grabCut':
 
         assert 'roi' in method_parameters
@@ -201,11 +209,20 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
         bgdModel = np.zeros((1, 65), np.float64)
         fgdModel = np.zeros((1, 65), np.float64)
 
+        # the names of the data we will extract
+        data_header = ['com x', 'com y', 'mean']
+
+    elif method == 'fit_ellipse':
+        data_header = sum([['k{:d} x'.format(i),
+                            'k{:d} y'.format(i),
+                            'k{:d} size'.format(i),
+                            'k{:d} angle'.format(i)]
+                           for i in range(5)],[]) +\
+                      ['contour center x', 'contour center y']
     elif method == 'Bright px':
-        pass
+        # the names of the data we will extract
+        data_header = ['bright px x', 'bright px y']
     else:
-
-
         print('unknown method. Abort')
         return None
 
@@ -217,26 +234,38 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
         print('subtracting background: {:s} => {:s}'.format(file_in,file_out))
     print('frames {:d}-{:d} ({:d})'.format(min_frame, max_frame, max_frame-min_frame))
 
+    # the data set of the points we track
+    data_set = []
 
-    center_of_mass = []
-    mean = []
-    brightest_px = []
-
+    sys.stdout.flush()
     for frame_idx in tqdm(range(max_frame)):
-
+        frame_data = [] # this leads keeps the data per frame
         ret, frame_in = cap.read()
         if ret:
 
             if method == 'BackgroundSubtractorMOG2':
                 frame_out = fgbg.apply(frame_in)
+
+                center_of_mass = measurements.center_of_mass(frame_out)
+                frame_data = [center_of_mass[0], center_of_mass[1]]
+                frame_data += [np.mean(frame_out)]
+
             elif method == 'grabCut':
                 cv.grabCut(frame_in, mask, method_parameters['roi'], bgdModel, fgdModel, method_parameters['iterations'], cv.GC_INIT_WITH_RECT)
                 mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
                 frame_out = frame_in * mask2[:,:,np.newaxis]
 
-            elif method == 'Bright px':
-                pass
+                center_of_mass = measurements.center_of_mass(frame_out)
+                frame_data = [center_of_mass[0], center_of_mass[1]]
+                frame_data += [np.mean(frame_out)]
 
+            elif method == 'Bright px':
+                brightest_px = np.unravel_index(np.argmax(frame_in[:, :, 0]), (info['Width'], info['Height']))
+                frame_data = [brightest_px[0], brightest_px[1]]
+
+            elif method == 'fit_ellipse':
+                return_image = export_video or (output_images>0 and frame_idx%output_images==0)
+                frame_data, frame_out = fit_ellipse(frame_in, return_image=return_image)
 
             # show output
             # cv.imshow('frame', frame_out)
@@ -252,13 +281,7 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
             cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))), frame_out)
             cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}_initit.jpg'.format(frame_idx))), frame_in)
 
-        if method in ['BackgroundSubtractorMOG2', 'grabCut']:
-            center_of_mass.append(measurements.center_of_mass(frame_out))
-            mean.append(np.mean(frame_out))
-        brightest_px.append(np.unravel_index(np.argmax(frame_in[:,:,0]), (info['Width'], info['Height'])))
-
-
-
+        data_set.append(frame_data)
 
         k = cv.waitKey(30) & 0xff
         if k == 27:
@@ -278,25 +301,29 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
     #### export data
     ################################################################################
 
-    data_dict = {}
-    if len(center_of_mass)>0:
-        center_of_mass = np.array([list(elem) for elem in center_of_mass])
-        data_dict.update({
-            'center_of_mass x': center_of_mass[:,0],
-            'center_of_mass y': center_of_mass[:,1]
-        })
 
-    if len(mean) > 0:
-        data_dict.update({
-            'mean': mean
-        })
+    print('asdsad', len(data_header), np.shape(np.array(data_set).T))
+    data_dict = {k: v for k, v in zip(data_header, np.array(data_set).T)}
 
-    brightest_px = np.array(brightest_px)
-
-    data_dict.update({
-        'bright x': brightest_px[:, 0],
-        'bright y': brightest_px[:, 1],
-    })
+    # data_dict = {}
+    # if len(center_of_mass)>0:
+    #     center_of_mass = np.array([list(elem) for elem in center_of_mass])
+    #     data_dict.update({
+    #         'center_of_mass x': center_of_mass[:,0],
+    #         'center_of_mass y': center_of_mass[:,1]
+    #     })
+    #
+    # if len(mean) > 0:
+    #     data_dict.update({
+    #         'mean': mean
+    #     })
+    #
+    # brightest_px = np.array(brightest_px)
+    #
+    # data_dict.update({
+    #     'bright x': brightest_px[:, 0],
+    #     'bright y': brightest_px[:, 1],
+    # })
 
     df = pd.DataFrame.from_dict(data_dict)
 
@@ -312,7 +339,7 @@ if __name__ == '__main__':
     # info = load_video_info('test.avi')
     # print(info)
     from glob import glob
-
+    import matplotlib.pyplot as plt
 
     filename ='magnet.jpg'
 
@@ -320,8 +347,10 @@ if __name__ == '__main__':
 
     img = cv.imread(filename)
 
-
-    fit_ellipse(img, file_out='asda')
+    print(fit_ellipse(img, return_image=True))
+    x = fit_ellipse(img, return_image=True)
+    data, img = x
+    plt.imshow(img), plt.show()
 
 
     # method = 'Bright px'
