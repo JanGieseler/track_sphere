@@ -21,7 +21,7 @@ def fit_ellipse(image, parameters, return_image=False):
         image: image to be analyse
         return_image: if True returns image where showing all the features
         parameters: dictionary containing
-        xfeatures, HessianThreshold, threshold, maxval, num_features
+        xfeatures, HessianThreshold, threshold, maxval, num_features, detect_features
 
     Returns:
         data, image with annotation
@@ -34,7 +34,10 @@ def fit_ellipse(image, parameters, return_image=False):
 
     surf.setHessianThreshold(parameters['HessianThreshold'])
 
-    kp, des = surf.detectAndCompute(image, None)
+    if parameters['detect_features']:
+        kp, des = surf.detectAndCompute(image, None)
+    else:
+        kp = []
 
 
     thresh = cv.threshold(gray, parameters['threshold'], parameters['maxval'], cv.THRESH_BINARY)[1]
@@ -224,6 +227,8 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
             method_parameters['maxval'] = 255
         if not 'num_features' in method_parameters:
             method_parameters['num_features'] = 5
+            if not 'detect_features' in method_parameters:
+                method_parameters['detect_features'] = False
 
     elif method == 'Bright px':
         # the names of the data we will extract
