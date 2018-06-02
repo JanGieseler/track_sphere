@@ -32,7 +32,6 @@ def load_video_info(filename):
 
     return info
 
-
 def power_spectral_density(x, time_step, frequency_range = None):
     """
     returns the *single sided* power spectral density of the time trace x which is sampled at intervals time_step

@@ -7,26 +7,37 @@ from scipy.ndimage import measurements
 
 
 from time import sleep
-import sys
+import sys, json
 
 from track_sphere.utils import *
 
 
 
 
-def fit_ellipse(image, return_image=False):
+def fit_ellipse(image, parameters, return_image=False):
+    """
+    fit an ellipse and tracks feature in image
+    Args:
+        image: image to be analyse
+        return_image: if True returns image where showing all the features
+        parameters: dictionary containing
+        xfeatures, HessianThreshold, threshold, maxval, num_features
 
+    Returns:
+        data, image with annotation
+
+    """
 
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 
-    surf = cv.xfeatures2d.SURF_create(100)
+    surf = cv.xfeatures2d.SURF_create(parameters['xfeatures'])
 
-    surf.setHessianThreshold(1000)
+    surf.setHessianThreshold(parameters['HessianThreshold'])
 
     kp, des = surf.detectAndCompute(image, None)
 
 
-    thresh = cv.threshold(gray, 100, 255, cv.THRESH_BINARY)[1]
+    thresh = cv.threshold(gray, parameters['threshold'], parameters['maxval'], cv.THRESH_BINARY)[1]
     im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     contour_magnet = max(contours, key=len)
@@ -38,35 +49,9 @@ def fit_ellipse(image, return_image=False):
     ellipse = cv.fitEllipse(contour_magnet)
 
 
-    # data_dict = {}
-    # # we expect 5 bright spots
-    # for i in range(5):
-    #     if i<len(kp):
-    #         data_dict.update({
-    #             'k{:d} x'.format(i):kp[i].pt[0],
-    #             'k{:d} y'.format(i):kp[i].pt[1],
-    #             'k{:d} size'.format(i): kp[i].size,
-    #             'k{:d} angle'.format(i): kp[i].angle
-    #         })
-    #     else:
-    #         data_dict.update({
-    #             'k{:d} x'.format(i): None,
-    #             'k{:d} y'.format(i): None,
-    #             'k{:d} size'.format(i): None,
-    #             'k{:d} angle'.format(i): None
-    #         })
-    # data_dict.update({
-    #     'contour center x': cX,
-    #     'contour center y': cY})
-    #
-    # data_dict = {k:[v] for k, v in data_dict.items()}
-    #
-    #
-    # data = pd.DataFrame.from_dict(data_dict)
-
     data = []
     # we expect 5 bright spots
-    for i in range(5):
+    for i in range(parameters['num_features']):
         if i<len(kp):
             data += [kp[i].pt[0], kp[i].pt[1], kp[i].size,kp[i].angle]
         else:
@@ -219,6 +204,20 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
                             'k{:d} angle'.format(i)]
                            for i in range(5)],[]) +\
                       ['contour center x', 'contour center y']
+        # check and update the method_parameters dictionary
+        if method_parameters is None:
+            method_parameters = {}
+        if not 'xfeatures' in method_parameters:
+            method_parameters['xfeatures'] = 100
+        if not 'HessianThreshold' in method_parameters:
+            method_parameters['HessianThreshold'] = 1000
+        if not 'threshold' in method_parameters:
+            method_parameters['threshold'] = 100
+        if not 'maxval' in method_parameters:
+            method_parameters['maxval'] = 255
+        if not 'num_features' in method_parameters:
+            method_parameters['num_features'] = 5
+
     elif method == 'Bright px':
         # the names of the data we will extract
         data_header = ['bright px x', 'bright px y']
@@ -260,12 +259,15 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
                 frame_data += [np.mean(frame_out)]
 
             elif method == 'Bright px':
+
+                frame_out = frame_in
+
                 brightest_px = np.unravel_index(np.argmax(frame_in[:, :, 0]), (info['Width'], info['Height']))
                 frame_data = [brightest_px[0], brightest_px[1]]
 
             elif method == 'fit_ellipse':
                 return_image = export_video or (output_images>0 and frame_idx%output_images==0)
-                frame_data, frame_out = fit_ellipse(frame_in, return_image=return_image)
+                frame_data, frame_out = fit_ellipse(frame_in, return_image=return_image, parameters=method_parameters)
 
             # show output
             # cv.imshow('frame', frame_out)
@@ -301,37 +303,19 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
     #### export data
     ################################################################################
 
-
-    print('asdsad', len(data_header), np.shape(np.array(data_set).T))
     data_dict = {k: v for k, v in zip(data_header, np.array(data_set).T)}
-
-    # data_dict = {}
-    # if len(center_of_mass)>0:
-    #     center_of_mass = np.array([list(elem) for elem in center_of_mass])
-    #     data_dict.update({
-    #         'center_of_mass x': center_of_mass[:,0],
-    #         'center_of_mass y': center_of_mass[:,1]
-    #     })
-    #
-    # if len(mean) > 0:
-    #     data_dict.update({
-    #         'mean': mean
-    #     })
-    #
-    # brightest_px = np.array(brightest_px)
-    #
-    # data_dict.update({
-    #     'bright x': brightest_px[:, 0],
-    #     'bright y': brightest_px[:, 1],
-    # })
 
     df = pd.DataFrame.from_dict(data_dict)
 
 
     df.to_csv(file_out.replace('.avi','.dat'))
-    print(file_out.replace('.avi','.dat'))
 
-
+    #print meta data to json
+    info_dict = {'info': info, 'method':method}
+    if not method_parameters is None:
+        info_dict['method_parameters'] = method_parameters
+    with open(file_out.replace('.avi','.json'), 'w') as outfile:
+        tmp = json.dump(info_dict, outfile, indent=4)
 
 
 if __name__ == '__main__':
