@@ -107,7 +107,7 @@ def fit_ellipse(image, parameters, return_image=False):
 
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, fourcc = None, output_images = 1000, buffer_time=1e-6,
-                          verbose = False, method='', method_parameters = None, export_video = False):
+                          verbose = False, method='', method_parameters = None, export_video = False, output_fps = None):
     """
     Takes a video file and outputs a new file where the background is substracted
     Args:
@@ -188,17 +188,21 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
 
     if export_video:
+
+        if output_fps is None:
+            output_fps = info['FrameRate']
+
         if os.name == 'posix':
             if method == 'BackgroundSubtractorMOG2':
                 # last argument means that we load a black and white image
-                video_writer = cv.VideoWriter(file_out, fourcc, info['FrameRate'], (info['Width'], info['Height']), False)
+                video_writer = cv.VideoWriter(file_out, fourcc, output_fps, (info['Width'], info['Height']), False)
             elif method == 'grabCut':
                 # for some reason there is an error when having the False argument and using grabcut
-                video_writer = cv.VideoWriter(file_out, fourcc, info['FrameRate'], (info['Width'], info['Height']))
+                video_writer = cv.VideoWriter(file_out, fourcc, output_fps, (info['Width'], info['Height']))
 
         else:
             # for windows doesn't work with False argument
-            video_writer = cv.VideoWriter(file_out, fourcc, info['FrameRate'], (info['Width'], info['Height']))
+            video_writer = cv.VideoWriter(file_out, fourcc, output_fps, (info['Width'], info['Height']))
     else:
         video_writer = None
 
@@ -272,12 +276,14 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     # the data set of the points we track
     data_set = []
 
+    # keeps the skipped indecies
+    skipped_frames = []
+
     sys.stdout.flush()
     for frame_idx in tqdm(range(max_frame)):
         frame_data = [] # this leads keeps the data per frame
         ret, frame_in = cap.read()
         if ret:
-
             if method == 'BackgroundSubtractorMOG2':
                 frame_out = fgbg.apply(frame_in)
 
@@ -314,6 +320,9 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
                 video_writer.write(frame_out)
             # if frame_idx == 1:
             #     break
+        else:
+            skipped_frames.append(frame_idx)
+            continue # go to next iteration
 
         if output_images>0 and frame_idx%output_images==0:
             cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))), frame_out)
@@ -347,7 +356,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     df.to_csv(file_out.replace('.avi','.dat'))
 
     #print meta data to json
-    info_dict = {'info': info, 'method':method}
+    info_dict = {'info': info, 'method':method, 'skipped_frames':skipped_frames}
     if not method_parameters is None:
         info_dict['method_parameters'] = method_parameters
     with open(file_out.replace('.avi','.json'), 'w') as outfile:
