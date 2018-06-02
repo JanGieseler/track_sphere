@@ -19,4 +19,6 @@ file_in = os.path.join(folder_in, filename_in)
 file_out = os.path.join(folder_out, filename_out)
 
 
-substract_background(file_in, file_out=file_out, max_frame=2000 ,output_images=200, verbose=False, method=method)
+# substract_background(file_in, file_out=file_out, max_frame=2000 ,output_images=200, verbose=False, method=method)
+
+test_grab_frame(file_in)

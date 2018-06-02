@@ -12,7 +12,18 @@ import sys, json
 from track_sphere.utils import *
 
 
+def test_grab_frame(file_in):
+    cap = cv.VideoCapture(file_in, False)  # open input video
 
+    ret, frame_in = cap.read()
+
+    # show output
+    cv.imshow('frame', frame_in)
+
+    cap.release()
+    cv.destroyAllWindows()
+
+    print(file_in, ':', ret)
 
 def fit_ellipse(image, parameters, return_image=False):
     """
