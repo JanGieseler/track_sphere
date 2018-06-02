@@ -56,7 +56,12 @@ def fit_ellipse(image, parameters, return_image=False):
             data += [kp[i].pt[0], kp[i].pt[1], kp[i].size,kp[i].angle]
         else:
             data += [None, None, None, None]
+    # contour center
     data += [cX, cY]
+
+    # ellipse center, size and angle
+    data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
+
 
     if return_image:
         # bright spots on magnet
@@ -202,8 +207,10 @@ def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None
                             'k{:d} y'.format(i),
                             'k{:d} size'.format(i),
                             'k{:d} angle'.format(i)]
-                           for i in range(5)],[]) +\
-                      ['contour center x', 'contour center y']
+                           for i in range(5)],[])
+
+        data_header += ['contour center x', 'contour center y']
+        data_header += ['ellipse center x', 'ellipse center y', 'ellipse a', 'ellipse b', 'ellipse angle']
         # check and update the method_parameters dictionary
         if method_parameters is None:
             method_parameters = {}
