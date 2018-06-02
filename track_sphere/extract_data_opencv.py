@@ -106,8 +106,8 @@ def fit_ellipse(image, parameters, return_image=False):
     return data, image
 
 
-def substract_background(file_in, file_out=None, min_frame = 0, max_frame = None, fourcc = None, output_images = 1000, buffer_time=1e-6,
-                         verbose = False, method='', method_parameters = None, export_video = False):
+def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, fourcc = None, output_images = 1000, buffer_time=1e-6,
+                          verbose = False, method='', method_parameters = None, export_video = False):
     """
     Takes a video file and outputs a new file where the background is substracted
     Args:
