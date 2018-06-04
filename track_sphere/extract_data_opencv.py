@@ -38,11 +38,35 @@ def test_grab_frame(file_in, verbose=False):
 
     return ret
 
+def optical_flow(image_old, image, features, parameters):
+    """
+    tracks motion features from image_old to image
+
+    Args:
+        image_old: previous frame
+        image:  new frame
+        features: features in previous frame
+        parameters: paramters for optical flow calculations, dictionary with:
+            winSize: 2 tuple
+            maxLevel: int
+            criteria: 3 tupple
+
+    Returns: features in image
+
+    """
+    # calculate optical flow
+    features_new, st, err = cv.calcOpticalFlowPyrLK(image_old, image, features, None, **parameters)
+    # Select good points
+    good_new = features_new[st == 1]
+    good_old = features[st == 1]
+
+    return good_new
+
 def fit_ellipse(image, parameters, return_image=False):
     """
     fit an ellipse and tracks feature in image
     Args:
-        image: image to be analyse
+        image: image to be analysed
         return_image: if True returns image where showing all the features
         parameters: dictionary containing
         xfeatures, HessianThreshold, threshold, maxval, num_features, detect_features
@@ -191,11 +215,15 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     if max_frame is None:
         max_frame = info['FrameCount']
 
+    # Create some random colors
+    color = np.random.randint(0, 255, (100, 3))
+
     ################################################################################
     #### setup input and output streams
     ################################################################################
 
     cap = cv.VideoCapture(file_in, False) #open input video
+    cap.set(cv.CAP_PROP_POS_FRAMES, min_frame) # set the starting frame for reading to min frame
 
     if fourcc == 'FULL':
         # no compression
@@ -225,6 +253,8 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     else:
         video_writer = None
 
+
+
     ################################################################################
     #### method dependent settings
     ################################################################################
@@ -235,7 +265,6 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         # the names of the data we will extract
         data_header = ['com x', 'com y', 'mean']
-
     elif method == 'grabCut':
 
         assert 'roi' in method_parameters
@@ -251,7 +280,6 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         # the names of the data we will extract
         data_header = ['com x', 'com y', 'mean']
-
     elif method == 'fit_ellipse':
         data_header = sum([['k{:d} x'.format(i),
                             'k{:d} y'.format(i),
@@ -276,10 +304,24 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             method_parameters['num_features'] = 5
             if not 'detect_features' in method_parameters:
                 method_parameters['detect_features'] = False
-
     elif method == 'Bright px':
         # the names of the data we will extract
         data_header = ['bright px x', 'bright px y']
+    elif method == 'optical_flow':
+        data_header = sum([['k{:d} x'.format(i),
+                            'k{:d} y'.format(i),
+                            'k{:d} size'.format(i),
+                            'k{:d} angle'.format(i)]
+                           for i in range(5)],[])
+        # check and update the method_parameters dictionary
+        if method_parameters is None:
+            method_parameters = {}
+        if not 'winSize' in method_parameters:
+            method_parameters['winSize'] = (15, 15)
+        if not 'maxLevel' in method_parameters:
+            method_parameters['maxLevel'] = 2
+        if not 'criteria' in method_parameters:
+            method_parameters['criteria'] = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
     else:
         print('unknown method. Abort')
         return None
@@ -299,9 +341,13 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     skipped_frames = []
 
     sys.stdout.flush()
-    for frame_idx in tqdm(range(max_frame)):
+    for frame_idx in tqdm(range(min_frame, max_frame)):
         frame_data = [] # this leads keeps the data per frame
-        ret, frame_in = cap.read()
+        try:
+            # todo grab frame frame_idx, now we always start at 0!!
+            ret, frame_in = cap.read()
+        except Exception as e:
+            ret = False
         if ret:
             if method == 'BackgroundSubtractorMOG2':
                 frame_out = fgbg.apply(frame_in)
