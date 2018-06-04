@@ -106,8 +106,11 @@ def fit_ellipse(image, parameters, return_image=False):
     return data, image
 
 
-def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, fourcc = None, output_images = 1000, buffer_time=1e-6,
-                          verbose = False, method='', method_parameters = None, export_video = False, output_fps = None):
+
+# todo: change parameters to (export, export_parameters, method, method_parameters)
+
+def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
+                          verbose = False, method='', method_parameters = None, export_parameters = {}):
     """
     Takes a video file and outputs a new file where the background is substracted
     Args:
@@ -143,9 +146,23 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
     assert isinstance(file_in, str)
 
-
     if file_out is None:
         file_out = file_in.replace('.avi', '-{:s}.avi'.format(method))
+
+    # set default values if not in dictionary
+    if not 'export_video' in export_parameters:
+        export_parameters['export_video'] = False
+    if not 'output_fps' in export_parameters:
+        export_parameters['output_fps'] = None
+    if not 'fourcc' in export_parameters:
+        export_parameters['fourcc'] = None
+    if not 'output_images' in export_parameters:
+        export_parameters['output_images'] = 1000
+
+    export_video = export_parameters['export_video']
+    output_fps = export_parameters['output_fps']
+    fourcc = export_parameters['fourcc']
+    output_images = export_parameters['output_images']
 
     if export_video:
         if os.path.exists(file_out):
@@ -193,13 +210,15 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             output_fps = info['FrameRate']
 
         if os.name == 'posix':
+
             if method == 'BackgroundSubtractorMOG2':
                 # last argument means that we load a black and white image
                 video_writer = cv.VideoWriter(file_out, fourcc, output_fps, (info['Width'], info['Height']), False)
             elif method == 'grabCut':
                 # for some reason there is an error when having the False argument and using grabcut
                 video_writer = cv.VideoWriter(file_out, fourcc, output_fps, (info['Width'], info['Height']))
-
+            else:
+                video_writer = cv.VideoWriter(file_out, fourcc, output_fps, (info['Width'], info['Height']))
         else:
             # for windows doesn't work with False argument
             video_writer = cv.VideoWriter(file_out, fourcc, output_fps, (info['Width'], info['Height']))
@@ -270,7 +289,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     #### start processing
     ################################################################################
     if not file_out is None:
-        print('subtracting background: {:s} => {:s}'.format(file_in,file_out))
+        print('exporting video: {:s} => {:s}'.format(file_in,file_out))
     print('frames {:d}-{:d} ({:d})'.format(min_frame, max_frame, max_frame-min_frame))
 
     # the data set of the points we track
@@ -356,7 +375,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     df.to_csv(file_out.replace('.avi','.dat'))
 
     #print meta data to json
-    info_dict = {'info': info, 'method':method, 'skipped_frames':skipped_frames}
+    info_dict = {'info': info, 'method': method, 'skipped_frames': skipped_frames, 'export_parameters': export_parameters}
     if not method_parameters is None:
         info_dict['method_parameters'] = method_parameters
     with open(file_out.replace('.avi','.json'), 'w') as outfile:
