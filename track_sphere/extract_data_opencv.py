@@ -62,6 +62,7 @@ def optical_flow(image_old, image, features, parameters):
 
     return good_new
 
+# todo: seperate feature detection and ellipse fitting since they are independent
 def fit_ellipse(image, parameters, return_image=False):
     """
     fit an ellipse and tracks feature in image
@@ -76,6 +77,7 @@ def fit_ellipse(image, parameters, return_image=False):
 
     """
 
+    # ==  feature detection =====
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 
     surf = cv.xfeatures2d.SURF_create(parameters['xfeatures'])
@@ -87,19 +89,6 @@ def fit_ellipse(image, parameters, return_image=False):
     else:
         kp = []
 
-
-    thresh = cv.threshold(gray, parameters['threshold'], parameters['maxval'], cv.THRESH_BINARY)[1]
-    im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-
-    contour_magnet = max(contours, key=len)
-
-    M = cv.moments(contour_magnet)
-    cX = int(M["m10"] / M["m00"])
-    cY = int(M["m01"] / M["m00"])
-
-    ellipse = cv.fitEllipse(contour_magnet)
-
-
     data = []
     # we expect 5 bright spots
     for i in range(parameters['num_features']):
@@ -107,13 +96,44 @@ def fit_ellipse(image, parameters, return_image=False):
             data += [kp[i].pt[0], kp[i].pt[1], kp[i].size,kp[i].angle]
         else:
             data += [None, None, None, None]
+
+    # ==  fit ellipse =====
+
+    # mean threshold
+    if parameters['threshold'] == 'mean':
+        thresh = cv.adaptiveThreshold(gray, parameters['maxval'], cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, parameters['blockSize'], parameters['c'])
+    elif parameters['threshold'] == 'gaussian':
+        # gaussian threshold
+        thresh = cv.adaptiveThreshold(gray, parameters['maxval'], cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, parameters['blockSize'], parameters['c'])
+    elif isinstance(parameters['threshold'], int):
+        # global threshold
+        thresh = cv.threshold(gray, parameters['threshold'], parameters['maxval'], cv.THRESH_BINARY)[1]
+
+
+
+    im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+    contour_magnet = max(contours, key=len)
+
+    # make sure it is convex
+    contour_magnet = cv.convexHull(contour_magnet, returnPoints=True)
+
+    # print('asdasda', np.shape(hull), np.shape(contour_magnet))
+
+
+    M = cv.moments(contour_magnet)
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+
+    ellipse = cv.fitEllipse(contour_magnet)
+
     # contour center
     data += [cX, cY]
 
     # ellipse center, size and angle
     data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
 
-
+    # generate image that shows the detected features
     if return_image:
         # bright spots on magnet
         for k in kp:
@@ -127,11 +147,9 @@ def fit_ellipse(image, parameters, return_image=False):
         cv.ellipse(image, ellipse, (0, 0, 255), 1)
     else:
         image = None
+
     return data, image
 
-
-
-# todo: change parameters to (export, export_parameters, method, method_parameters)
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
                           verbose = False, method='', method_parameters = None, export_parameters = {}):
@@ -297,13 +315,23 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         if not 'HessianThreshold' in method_parameters:
             method_parameters['HessianThreshold'] = 1000
         if not 'threshold' in method_parameters:
-            method_parameters['threshold'] = 100
+            # method_parameters['threshold'] = 100
+            method_parameters['threshold'] = 'gaussian'
         if not 'maxval' in method_parameters:
             method_parameters['maxval'] = 255
         if not 'num_features' in method_parameters:
             method_parameters['num_features'] = 5
             if not 'detect_features' in method_parameters:
                 method_parameters['detect_features'] = False
+
+        if method_parameters['threshold'] in ('mean', 'gaussian'):
+            # Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
+            if not 'blockSize' in method_parameters:
+                method_parameters['blockSize'] = 21
+            # Constant subtracted from the mean or weighted mean (see the details below). Normally, it is positive but may be zero or negative as well.
+            if not 'c' in method_parameters:
+                method_parameters['c'] = 2
+
     elif method == 'Bright px':
         # the names of the data we will extract
         data_header = ['bright px x', 'bright px y']
@@ -344,7 +372,6 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     for frame_idx in tqdm(range(min_frame, max_frame)):
         frame_data = [] # this leads keeps the data per frame
         try:
-            # todo grab frame frame_idx, now we always start at 0!!
             ret, frame_in = cap.read()
         except Exception as e:
             ret = False

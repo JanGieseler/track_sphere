@@ -27,6 +27,9 @@ def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
     ret, frame = cap.read()
     # fit ellipse and track features
     data, frame_out = fit_ellipse(frame, method_parameters, return_image=True)
+
+
+
     print('fitellipse', data)
 
     cv.imwrite(file_out, frame_out)
@@ -38,27 +41,66 @@ def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
 
 
 if __name__ == '__main__':
-    # ======== Settings ========
-    method_parameters = {}
-    method_parameters['xfeatures'] = 100
-    method_parameters['HessianThreshold'] = 1000
-    method_parameters['threshold'] = 100
-    method_parameters['maxval'] = 255
-    method_parameters['num_features'] = 5
+    case = 2
 
-    # give file to test
-    folder_in = '../example_data/'
-    # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
-    filename_in = '20171207_magnet.avi'
-
-    file_in = os.path.join(folder_in, filename_in)
-
-    check_parameters_fit_ellipse(file_in, method_parameters, frame=1000)
-
-    # fig = plt.fig
-    # # show the image and the features
-    # plt.imshow(np.array(image[:, :, 0]))
-    #
-    # input("Press Enter to continue...")
+    # ==========================================
+    # ==== Case 1: the egg shaped magnet =======
+    # ==========================================
+    if case == 1:
+        # ======== Settings ========
+        method_parameters = {}
+        method_parameters['xfeatures'] = 100
+        method_parameters['HessianThreshold'] = 1000
+        method_parameters['threshold'] = 100
+        method_parameters['maxval'] = 255
+        method_parameters['num_features'] = 5
 
 
+        # ======== Settings ========
+        method_parameters = {}
+        method_parameters['xfeatures'] = 100
+        method_parameters['HessianThreshold'] = 1000
+        method_parameters['threshold'] = 'gaussian'
+        # method_parameters['threshold'] = 'mean'
+        # method_parameters['threshold'] = 100
+        method_parameters['blockSize'] = 31
+        method_parameters['c'] = 7
+        method_parameters['maxval'] = 255
+        method_parameters['num_features'] = 5
+
+
+        # give file to test
+        folder_in = '../example_data/'
+        # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
+        filename_in = '20171207_magnet.avi'
+
+        file_in = os.path.join(folder_in, filename_in)
+
+        check_parameters_fit_ellipse(file_in, method_parameters, frame=1000)
+
+    # ==========================================================================
+    # ==== Case 2: a difficult one because of non-homogeneous background =======
+    # ==========================================================================
+    if case == 2:
+        # ======== Settings ========
+        method_parameters = {}
+        method_parameters['xfeatures'] = 100
+        method_parameters['HessianThreshold'] = 1000
+        method_parameters['threshold'] = 'gaussian'
+        # method_parameters['threshold'] = 'mean'
+        # method_parameters['threshold'] = 100
+        method_parameters['blockSize'] = 21
+        method_parameters['c'] = 2
+        method_parameters['maxval'] = 255
+        method_parameters['num_features'] = 5
+
+
+
+
+        # give file to test
+        folder_in = '../raw_data/'
+        filename_in = '20180523_Sample6_bead_1_direct_thermal_03_reencode.avi'
+
+        file_in = os.path.join(folder_in, filename_in)
+
+        check_parameters_fit_ellipse(file_in, method_parameters, frame=1000)
