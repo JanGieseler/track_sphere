@@ -62,6 +62,46 @@ def optical_flow(image_old, image, features, parameters):
 
     return good_new
 
+def features_surf(image, parameters, return_image=False):
+    """
+    finds features in image using the SURF algorithm
+    Args:
+        image: image to be analysed
+        return_image: if True returns image where showing all the features
+        parameters: dictionary containing
+        xfeatures, HessianThreshold
+
+    Returns:
+        data, image with annotation
+
+    """
+    # ==  feature detection =====
+
+    surf = cv.xfeatures2d.SURF_create(parameters['xfeatures'])
+
+    surf.setHessianThreshold(parameters['HessianThreshold'])
+
+    kp, des = surf.detectAndCompute(image, None)
+
+    data = []
+    # we expect num_features bright spots
+    for i in range(parameters['num_features']):
+        if i < len(kp):
+            data += [kp[i].pt[0], kp[i].pt[1], kp[i].size,kp[i].angle]
+        else:
+            data += [None, None, None, None]
+
+    # generate image that shows the detected features
+    if return_image:
+        # bright spots on magnet
+        for k in kp:
+            # print(k.angle, k.size, k.pt, (int(k.pt[0]), int(k.pt[1])))
+            cv.circle(image, (int(k.pt[0]), int(k.pt[1])), 5, color=100)
+    else:
+        image = None
+
+    return data, image
+
 # todo: seperate feature detection and ellipse fitting since they are independent
 def fit_ellipse(image, parameters, return_image=False):
     """
@@ -70,32 +110,14 @@ def fit_ellipse(image, parameters, return_image=False):
         image: image to be analysed
         return_image: if True returns image where showing all the features
         parameters: dictionary containing
-        xfeatures, HessianThreshold, threshold, maxval, num_features, detect_features
+        threshold, maxval, blockSize, c
 
     Returns:
         data, image with annotation
 
     """
 
-    # ==  feature detection =====
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-
-    surf = cv.xfeatures2d.SURF_create(parameters['xfeatures'])
-
-    surf.setHessianThreshold(parameters['HessianThreshold'])
-
-    if parameters['detect_features']:
-        kp, des = surf.detectAndCompute(image, None)
-    else:
-        kp = []
-
-    data = []
-    # we expect 5 bright spots
-    for i in range(parameters['num_features']):
-        if i<len(kp):
-            data += [kp[i].pt[0], kp[i].pt[1], kp[i].size,kp[i].angle]
-        else:
-            data += [None, None, None, None]
 
     # ==  fit ellipse =====
 
@@ -110,15 +132,13 @@ def fit_ellipse(image, parameters, return_image=False):
         thresh = cv.threshold(gray, parameters['threshold'], parameters['maxval'], cv.THRESH_BINARY)[1]
 
 
-
     im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     contour_magnet = max(contours, key=len)
 
     # make sure it is convex
-    contour_magnet = cv.convexHull(contour_magnet, returnPoints=True)
-
-    # print('asdasda', np.shape(hull), np.shape(contour_magnet))
+    if parameters['convex_hull']:
+        contour_magnet = cv.convexHull(contour_magnet, returnPoints=True)
 
 
     M = cv.moments(contour_magnet)
@@ -128,17 +148,13 @@ def fit_ellipse(image, parameters, return_image=False):
     ellipse = cv.fitEllipse(contour_magnet)
 
     # contour center
-    data += [cX, cY]
+    data = [cX, cY]
 
     # ellipse center, size and angle
     data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
 
     # generate image that shows the detected features
     if return_image:
-        # bright spots on magnet
-        for k in kp:
-            # print(k.angle, k.size, k.pt, (int(k.pt[0]), int(k.pt[1])))
-            cv.circle(image, (int(k.pt[0]), int(k.pt[1])), 5, color=100)
         # outline of magnet contour
         cv.drawContours(image, [contour_magnet], -1, (0, 255, 0), 1)
         # center of ellipse
@@ -159,21 +175,23 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         file_in:
         file_out:
 
+        export_parameters: dictionary with the following parameters: export_video, output_fps, fourcc, output_images
+            export_video: if True write output frames to video file
+            output_fps: frames per second of output video file
+            fourcc: four character code for video type (https://www.fourcc.org)
+                if None use the same as the input video
 
-        fourcc: four character code for video type (https://www.fourcc.org)
-            if None use the same as the input video
+                some options are
+                // Lossless in quality with good processing performance
+                'LAGS'
+                // no compression. WARNING can take up a lot of space!!
+                'FULL'
 
-            some options are
-            // Lossless in quality with good processing performance
-            'LAGS'
-            // no compression. WARNING can take up a lot of space!!
-            'FULL'
-
-        output_images: (int) if specified output an image every output_images iterations
+            output_images: (int) if specified output an image every output_images iterations
 
         buffer_time:  wait time between frames, needed because of some buffer issues of opencv
 
-        method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px', 'fit_ellipse'
+        method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px', 'fit_ellipse', 'features_surf'
         method_parameters: method specific parameters
 
     Returns:
@@ -299,38 +317,42 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         # the names of the data we will extract
         data_header = ['com x', 'com y', 'mean']
     elif method == 'fit_ellipse':
-        data_header = sum([['k{:d} x'.format(i),
-                            'k{:d} y'.format(i),
-                            'k{:d} size'.format(i),
-                            'k{:d} angle'.format(i)]
-                           for i in range(5)],[])
 
-        data_header += ['contour center x', 'contour center y']
+        data_header = ['contour center x', 'contour center y']
         data_header += ['ellipse center x', 'ellipse center y', 'ellipse a', 'ellipse b', 'ellipse angle']
         # check and update the method_parameters dictionary
         if method_parameters is None:
             method_parameters = {}
-        if not 'xfeatures' in method_parameters:
-            method_parameters['xfeatures'] = 100
-        if not 'HessianThreshold' in method_parameters:
-            method_parameters['HessianThreshold'] = 1000
-        if not 'threshold' in method_parameters:
+        if 'threshold' not in method_parameters:
             # method_parameters['threshold'] = 100
             method_parameters['threshold'] = 'gaussian'
-        if not 'maxval' in method_parameters:
+        if 'maxval' not in method_parameters:
             method_parameters['maxval'] = 255
-        if not 'num_features' in method_parameters:
-            method_parameters['num_features'] = 5
-            if not 'detect_features' in method_parameters:
-                method_parameters['detect_features'] = False
 
+        if 'convex_hull' not in method_parameters:
+            method_parameters['convex_hull'] = True
         if method_parameters['threshold'] in ('mean', 'gaussian'):
             # Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
-            if not 'blockSize' in method_parameters:
+            if 'blockSize' not in method_parameters:
                 method_parameters['blockSize'] = 21
             # Constant subtracted from the mean or weighted mean (see the details below). Normally, it is positive but may be zero or negative as well.
-            if not 'c' in method_parameters:
+            if 'c' not in method_parameters:
                 method_parameters['c'] = 2
+
+    elif method == 'features_surf':
+        data_header = sum([['k{:d} x'.format(i),
+                            'k{:d} y'.format(i),
+                            'k{:d} size'.format(i),
+                            'k{:d} angle'.format(i)]
+                           for i in range(method_parameters['num_features'])],[])
+        if method_parameters is None:
+            method_parameters = {}
+        if 'xfeatures' not in method_parameters:
+            method_parameters['xfeatures'] = 100
+        if 'HessianThreshold' not in method_parameters:
+            method_parameters['HessianThreshold'] = 1000
+        if 'num_features' not in method_parameters:
+            method_parameters['num_features'] = 5
 
     elif method == 'Bright px':
         # the names of the data we will extract
@@ -344,11 +366,11 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         # check and update the method_parameters dictionary
         if method_parameters is None:
             method_parameters = {}
-        if not 'winSize' in method_parameters:
+        if 'winSize' not in method_parameters:
             method_parameters['winSize'] = (15, 15)
-        if not 'maxLevel' in method_parameters:
+        if 'maxLevel' not in method_parameters:
             method_parameters['maxLevel'] = 2
-        if not 'criteria' in method_parameters:
+        if 'criteria' not in method_parameters:
             method_parameters['criteria'] = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
     else:
         print('unknown method. Abort')
@@ -402,6 +424,10 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             elif method == 'fit_ellipse':
                 return_image = export_video or (output_images>0 and frame_idx%output_images==0)
                 frame_data, frame_out = fit_ellipse(frame_in, return_image=return_image, parameters=method_parameters)
+
+            elif method == 'features_surf':
+                return_image = export_video or (output_images>0 and frame_idx%output_images==0)
+                frame_data, frame_out = features_surf(frame_in, return_image=return_image, parameters=method_parameters)
 
             # show output
             # cv.imshow('frame', frame_out)

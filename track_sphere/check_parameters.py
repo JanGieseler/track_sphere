@@ -41,7 +41,7 @@ def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
 
 
 if __name__ == '__main__':
-    case = 2
+    case = 1
 
     # ==========================================
     # ==== Case 1: the egg shaped magnet =======
@@ -49,24 +49,18 @@ if __name__ == '__main__':
     if case == 1:
         # ======== Settings ========
         method_parameters = {}
-        method_parameters['xfeatures'] = 100
-        method_parameters['HessianThreshold'] = 1000
         method_parameters['threshold'] = 100
         method_parameters['maxval'] = 255
-        method_parameters['num_features'] = 5
-
 
         # ======== Settings ========
         method_parameters = {}
-        method_parameters['xfeatures'] = 100
-        method_parameters['HessianThreshold'] = 1000
         method_parameters['threshold'] = 'gaussian'
         # method_parameters['threshold'] = 'mean'
         # method_parameters['threshold'] = 100
         method_parameters['blockSize'] = 31
-        method_parameters['c'] = 7
+        method_parameters['c'] = 9
         method_parameters['maxval'] = 255
-        method_parameters['num_features'] = 5
+        method_parameters['convex_hull'] = True
 
 
         # give file to test
@@ -76,7 +70,7 @@ if __name__ == '__main__':
 
         file_in = os.path.join(folder_in, filename_in)
 
-        check_parameters_fit_ellipse(file_in, method_parameters, frame=1000)
+        check_parameters_fit_ellipse(file_in, method_parameters, frame=0)
 
     # ==========================================================================
     # ==== Case 2: a difficult one because of non-homogeneous background =======
@@ -93,6 +87,7 @@ if __name__ == '__main__':
         method_parameters['c'] = 2
         method_parameters['maxval'] = 255
         method_parameters['num_features'] = 5
+        method_parameters['convex_hull'] = True
 
 
 

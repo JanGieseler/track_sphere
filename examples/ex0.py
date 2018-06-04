@@ -21,4 +21,10 @@ file_out = os.path.join(folder_out, filename_out)
 
 # substract_background(file_in, file_out=file_out, max_frame=2000 ,output_images=200, verbose=False, method=method)
 
-test_grab_frame(file_in, verbose=True)
+
+export_parameters = {
+    'output_images': 200
+}
+
+extract_position_data(file_in, file_out=file_out, max_frame=1000, verbose=False,
+                      method=method,  export_parameters=export_parameters)

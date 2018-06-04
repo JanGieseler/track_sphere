@@ -1,47 +1,34 @@
-## Example 3:
-#  feature extraction using the method 'fit_ellipse'
+## Example 4:
+#  feature extraction using the method 'features_surf'
 # Source file is 20171207_magnet.avi
 
 import os
 from track_sphere.extract_data_opencv import *
 
-method = 'fit_ellipse'
+method = 'features_surf'
 
 
 # ======== Settings ========
 
 folder_in = '../example_data/'
-# filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
 filename_in = '20171207_magnet.avi'
 
-export_video = True
+export_video = False
 output_fps = 10
 output_images=200
-
-# ======== Settings a ========
-method_parameters = {}
-method_parameters['threshold'] = 100
-method_parameters['maxval'] = 255
-method_parameters['num_features'] = 5
-method_parameters['convex_hull'] = False
-folder_out = '../example_out/ex3-a/'
 
 
 # ======== Settings b========
 method_parameters = {}
-method_parameters['threshold'] = 'gaussian'
-# method_parameters['threshold'] = 'mean'
-# method_parameters['threshold'] = 100
-method_parameters['blockSize'] = 35
-method_parameters['c'] = 11
-method_parameters['maxval'] = 255
-method_parameters['convex_hull'] = True
-folder_out = '../example_out/ex3-b/'
+method_parameters['xfeatures'] = 100
+method_parameters['HessianThreshold'] = 1000
+method_parameters['num_features'] = 5
+folder_out = '../example_out/ex4/'
 
 # ======== run script ========
 
 if export_video:
-    folder_out = '../example_out/ex3-video/'
+    folder_out = '../example_out/ex4-video/'
 
 filename_out = filename_in.replace('.avi', '-{:s}.avi'.format(method))
 
