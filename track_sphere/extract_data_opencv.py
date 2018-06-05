@@ -37,33 +37,6 @@ def test_grab_frame(file_in, verbose=False):
 
     return ret
 
-def features_surf(image, points, parameters):
-    """
-    tracks motion features from image_old to image
-
-    Args:
-        image_old: previous frame
-        image:  new frame
-        features: features in previous frame
-        parameters: parameters for optical flow calculations, dictionary with:
-            winSize: 2 tuple
-
-    Returns: features in image
-
-    """
-
-    winSize = parameters['winSize']
-
-    # for pt in points:
-    #     sub_image
-
-
-    # calculate optical flow
-    features_new, st, err = cv.calcOpticalFlowPyrLK(image_old, image, features, None, **parameters)
-    # Select good points
-    good_new = features_new[st == 1]
-    good_old = features[st == 1]
-
 # def optical_flow_features_surf(image_old, image, features, parameters):
 #     """
 #     tracks motion features from image_old to image
@@ -187,35 +160,15 @@ def features_surf(image, parameters, features = None, return_image=False):
 
     return data, image
 
-
-def lrc_from_features(features, winSize, num_features=None):
-    """
-    gets the lower right corner form the center point if a feature
-
-    Args:
-        features: list with features of length (num_features x 4)
-                    the four numbers are angle, size, x, y
-
-    Returns: positions as a array with shape = (num_features, 2)
-
-    """
-    if num_features is None:
-        num_features = int(len(features)/4)
-
-    positions = np.reshape(features, [num_features,  4])[:,:2].astype(int)
-    positions[:, 0] -= int(winSize[0] / 2)
-    positions[:, 1] -= int(winSize[1] / 2)
-
-    return positions
-
-def fit_blob(image, parameters, points, winSize, return_image=False):
+def fit_blobs(image, parameters, points, return_image=False):
     """
     fit an ellipse and tracks feature in image
     Args:
         image: image to be analysed
         return_image: if True returns image where showing all the features
         parameters: dictionary containing
-        threshold, maxval, blockSize, c
+        winSize, maxval, convex_hull
+        points: points around which we look for the blob
 
     Returns:
         data, image with annotation
@@ -223,59 +176,55 @@ def fit_blob(image, parameters, points, winSize, return_image=False):
     """
 
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-    data = []
-    plot_additions = []
-    w, h = winSize
+    data = []  # store the data
+    plot_additions = []  # store the information to add the roi, ellipses to the image
+    w, h = parameters['winSize']
 
-    tmp = []
     for i, pt in enumerate(points):
-        roi = (int(pt[0]), int(pt[1]), w, h)
 
-        r, c = roi[1] - int(roi[3] / 2), roi[0] - int(roi[2] / 2)
-
+        r, c = int(pt[1]) - int(0.5*h), int(pt[0]) - int(0.5*w)
+        # select subimage of interest
         gray_roi = gray[r:r+h, c:c+w]
-        print(np.shape(gray))
 
+        # threshold image to identify the blob using otsu's method for automatic thresholding
         retVal, thresh = cv.threshold(gray_roi, 0, parameters['maxval'], cv.THRESH_BINARY + cv.THRESH_OTSU)
 
-        # thresh = cv.threshold(gray_roi, 180, parameters['maxval'], cv.THRESH_BINARY)[1]
-
-        im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE, offset=(c,r))
+        im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE, offset=(c, r))
 
         contour_magnet = max(contours, key=len)
 
-        # make sure it is convex
+        # make sure contour is convex
         if parameters['convex_hull']:
             contour_magnet = cv.convexHull(contour_magnet, returnPoints=True)
 
         ellipse = cv.fitEllipse(contour_magnet)
 
+        # threshold value
+        data += [retVal]
         # ellipse center, size and angle
         data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
 
+        # save values for plotting
+        if return_image:
+            plot_additions.append([contour_magnet, ellipse, (c, r)])
 
-        plot_additions.append([contour_magnet, ellipse, (r, c)])
 
-        tmp.append(gray_roi)
-
-    print('=====', data)
-    # image = gray
     # generate image that shows the detected features
     if return_image:
 
-        for i, (contour_magnet, ellipse, (r, c)) in enumerate(plot_additions):
+        for i, (contour_magnet, ellipse, (c, r)) in enumerate(plot_additions):
             # outline of magnet contour
             cv.drawContours(image, [contour_magnet], -1, (0, 255, 0), 1)
             # initial point
             cv.circle(image, (c+int(0.5*w), r+int(0.5*h)), 2, (0, 0, 255), -1)
             # roi
-            cv.rectangle(image, (c, r), (c+w, r+h), (0, 255, 0), 1)
+            cv.rectangle(image, (c, r), (c+w, r+h), (255, 0, 0), 1)
             # outline of ellipse
             cv.ellipse(image, ellipse, (0, 0, 255), 1)
     else:
         image = None
 
-    return data, image, tmp
+    return data, image
 
 def fit_ellipse(image, parameters, return_image=False):
     """
@@ -340,7 +289,6 @@ def fit_ellipse(image, parameters, return_image=False):
 
     return data, image
 
-
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
                           verbose = False, method='', method_parameters = None, export_parameters = {}):
     """
@@ -365,7 +313,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         buffer_time:  wait time between frames, needed because of some buffer issues of opencv
 
-        method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px', 'fit_ellipse', 'features_surf', 'optical_flow'
+        method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px', 'fit_ellipse', 'features_surf', 'optical_flow', 'fit_blobs'
         method_parameters: method specific parameters
 
     Returns:
@@ -531,6 +479,44 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     elif method == 'optical_flow':
         method_parameters['num_features'] = 5
 
+    elif method == 'fit_blobs':
+        if 'maxval' not in method_parameters:
+            method_parameters['maxval'] = 255
+        if 'convex_hull' not in method_parameters:
+            method_parameters['convex_hull'] = False
+        # method_parameters['num_features'] = 5
+        # method_parameters['detect_points'] = True
+
+        # take the center of the image as default
+        if 'initial_points' not in method_parameters:
+            method_parameters['initial_points'] = [[int(0.5*info['Width']), int(0.5*info['Height'])]]
+        if 'winSize' not in method_parameters:
+            method_parameters['winSize'] = (30,30)
+
+        method_parameters['num_features'] = len(method_parameters['initial_points'])
+
+        # threshold value, ellipse center (x,y), size (x,y) and angle
+        data_header = sum([[
+            'b{:d} thresh'.format(i),
+            'b{:d} x'.format(i),
+            'b{:d} y'.format(i),
+            'b{:d} a'.format(i),
+            'b{:d} b'.format(i),
+            'b{:d} angle'.format(i)]
+            for i in range(method_parameters['num_features'])], [])
+
+        # if method_parameters['detect_points'] is False:
+        # make sure that initial points 2D array with 2 elements per column
+
+        print(method_parameters['initial_points'])
+        print(np.shape(method_parameters['initial_points']))
+        assert len(np.shape(method_parameters['initial_points'])) == 2
+        assert len(method_parameters['initial_points'][0]) == 2
+
+
+        points = method_parameters['initial_points']
+
+
     elif method == 'Bright px':
         # the names of the data we will extract
         data_header = ['bright px x', 'bright px y']
@@ -575,6 +561,9 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         except Exception as e:
             ret = False
         if ret:
+
+            return_image = export_video or (output_images > 0 and frame_idx % output_images == 0)
+
             if method == 'BackgroundSubtractorMOG2':
                 frame_out = fgbg.apply(frame_in)
 
@@ -592,22 +581,20 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
                 frame_data += [np.mean(frame_out)]
 
             elif method == 'Bright px':
-
                 frame_out = frame_in
-                # todo: check if the following two lines work:
-                # (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame_out)
-                # frame_data = [maxLoc[0], maxLoc[1]]
-
-                brightest_px = np.unravel_index(np.argmax(frame_in[:, :, 0]), (info['Width'], info['Height']))
-                frame_data = [brightest_px[0], brightest_px[1]]
+                (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame_out[:,:,0], None)
+                frame_data = [maxLoc[1], maxLoc[0]]
 
             elif method == 'fit_ellipse':
-                return_image = export_video or (output_images>0 and frame_idx%output_images==0)
                 frame_data, frame_out = fit_ellipse(frame_in, return_image=return_image, parameters=method_parameters)
 
             elif method == 'features_surf':
-                return_image = export_video or (output_images>0 and frame_idx%output_images==0)
                 frame_data, frame_out = features_surf(frame_in, return_image=return_image, parameters=method_parameters)
+
+            elif method == 'fit_blobs':
+                frame_data, frame_out = fit_blobs(frame_in, parameters=method_parameters, points=points, return_image=return_image)
+                # retrieve the points for the next iteration
+                points = points_from_blobs(frame_data, num_blobs=method_parameters['num_features'])
 
             # show output
             # cv.imshow('frame', frame_out)

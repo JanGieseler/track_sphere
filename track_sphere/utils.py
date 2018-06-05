@@ -1,4 +1,6 @@
 import os, yaml
+import numpy as np
+import cv2 as cv
 
 def load_video_info(filename):
     """
@@ -46,6 +48,88 @@ def roi_2_roi_tlc(roi):
 
     """
     return (roi[1] - int(roi[3] / 2), roi[0] - int(roi[2] / 2), roi[3], roi[2])
+
+def lrc_from_features(features, winSize, num_features=None):
+    """
+    gets the lower right corner from the center point of a feature
+
+    Args:
+        features: list with features of length (num_features x 4)
+                    the four numbers are angle, size, x, y
+
+    Returns: positions as a array with shape = (num_features, 2)
+
+    """
+    if num_features is None:
+        num_features = int(len(features)/4)
+
+    positions = np.reshape(features, [num_features,  4])[:,:2].astype(int)
+    positions[:, 0] -= int(winSize[0] / 2)
+    positions[:, 1] -= int(winSize[1] / 2)
+
+    return positions
+
+
+def points_from_blobs(blobs, num_blobs=None):
+    """
+    gets the center points from fit_blobs output data
+
+    Args:
+        blobs: list with blobs data of length (num_blobs x 6)
+                    the four numbers are threshold, ellipse center (x, y), size (a,b) and angle
+
+    Returns: positions as a array with shape = (num_blobs, 2)
+
+    """
+    if num_blobs is None:
+        num_blobs = int(len(blobs)/6)
+
+    positions = np.reshape(blobs, [num_blobs,  6])[:,1:3].astype(int)
+    # positions[:, 0] -= int(winSize[0] / 2)
+    # positions[:, 1] -= int(winSize[1] / 2)
+
+    return positions
+
+def select_initial_points(file_in, frame = 0):
+    """
+    loads frame and returns points that have been selected with a double click
+    Args:
+        file_in: path to video file
+        frame: index of frame
+
+    Returns: positions of selected points
+
+    """
+
+
+    # mouse callback function
+    def draw_circle(event,x,y,flags,param):
+        if event == cv.EVENT_LBUTTONDBLCLK:
+
+            cv.circle(frame,(x,y),5,(255,0,0),-1)
+            positions.append([x,y])
+            print('position', x, y)
+
+    title = 'select blob with double-click, to finish press ESC'
+    # bind the function to window
+    cv.namedWindow(title)
+    cv.setMouseCallback(title,draw_circle)
+
+    # load frame of video
+    cap = cv.VideoCapture(file_in)
+    cap.set(cv.CAP_PROP_POS_FRAMES, frame)  # set the starting frame for reading to frame
+    ret, frame = cap.read()
+
+    positions = []
+
+    while(1):
+        cv.imshow(title,frame)
+        if cv.waitKey(20) & 0xFF == 27:
+            break
+    cap.release()
+    cv.destroyAllWindows()
+
+    return positions
 
 def power_spectral_density(x, time_step, frequency_range = None):
     """
