@@ -9,12 +9,13 @@ from track_sphere.extract_data_opencv import *
 
 method = 'Bright px'
 
-folder_in = '../example_data/'
-# filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
+folder_in = '/Volumes/Elements/lev_data/20180523_Sample_6_bead_1/'
 filename_in = '20171207_magnet.avi'
 
 
-folder_out = '../example_out/ex0/'
+folder_out = os.path.join('../data/', os.path.dirname(folder_in))
+
+print(folder_out)
 filename_out = filename_in.replace('.avi', '-{:s}.avi'.format(method))
 
 file_in = os.path.join(folder_in, filename_in)

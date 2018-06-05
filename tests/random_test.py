@@ -1,3 +1,6 @@
+# the goal of this file is to check if open cv works properly, i.e. if we can read and write files
+
+
 import cv2 as cv
 import os
 import numpy as np
