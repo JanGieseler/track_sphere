@@ -1,4 +1,4 @@
-from track_sphere.extract_data_opencv import fit_ellipse
+from track_sphere.extract_data_opencv import fit_ellipse, features_surf, lrc_from_features
 import os
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -16,7 +16,6 @@ def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
     Returns: image
 
     """
-    method_parameters['detect_features'] = True
 
     file_out = file_in.replace('.avi', 'test.jpg')
 
@@ -25,7 +24,7 @@ def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
 
     # read frame
     ret, frame = cap.read()
-    # fit ellipse and track features
+    # fit ellipse
     data, frame_out = fit_ellipse(frame, method_parameters, return_image=True)
 
 
@@ -38,14 +37,50 @@ def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
     cap.release()
     cv.destroyAllWindows()
 
+def check_parameters_features_surf(file_in, method_parameters, features=None, frame = 0):
+    """
+    opens a video and runs features_surf on the first frame using the parameters method_parameters
+    shows the result
+    Args:
+        file_in:
+        method_parameters:
 
+    Returns: image
+
+    """
+
+    file_out = file_in.replace('.avi', 'test.jpg')
+
+    cap = cv.VideoCapture(file_in)
+    cap.set(cv.CAP_PROP_POS_FRAMES, frame)  # set the starting frame for reading to min frame
+
+    # read frame
+    ret, frame = cap.read()
+
+    # if features is not None:
+    #         for f in features:
+    #     print
+
+    # find features
+    data, frame_out = features_surf(frame, method_parameters, features=features, return_image=True)
+    print('data', data)
+
+
+
+    # print('find features', lrc_from_features(features), method_parameters['winSize'])
+
+    cv.imwrite(file_out, frame_out)
+
+
+    cap.release()
+    cv.destroyAllWindows()
 
 if __name__ == '__main__':
-    case = 1
+    case = 3
 
-    # ==========================================
-    # ==== Case 1: the egg shaped magnet =======
-    # ==========================================
+    # ========================================================
+    # ==== Case 1 (fit_ellipse): the egg shaped magnet =======
+    # ========================================================
     if case == 1:
         # ======== Settings ========
         method_parameters = {}
@@ -73,21 +108,14 @@ if __name__ == '__main__':
         check_parameters_fit_ellipse(file_in, method_parameters, frame=0)
 
     # ==========================================================================
-    # ==== Case 2: a difficult one because of non-homogeneous background =======
+    # ==== Case 2 (fit_ellipse): a difficult one because of non-homogeneous background =======
     # ==========================================================================
     if case == 2:
         # ======== Settings ========
         method_parameters = {}
         method_parameters['xfeatures'] = 100
         method_parameters['HessianThreshold'] = 1000
-        method_parameters['threshold'] = 'gaussian'
-        # method_parameters['threshold'] = 'mean'
-        # method_parameters['threshold'] = 100
-        method_parameters['blockSize'] = 21
-        method_parameters['c'] = 2
-        method_parameters['maxval'] = 255
         method_parameters['num_features'] = 5
-        method_parameters['convex_hull'] = True
 
 
 
@@ -99,3 +127,35 @@ if __name__ == '__main__':
         file_in = os.path.join(folder_in, filename_in)
 
         check_parameters_fit_ellipse(file_in, method_parameters, frame=1000)
+
+
+    # ==========================================================================
+    # ==== Case 3 (features_surf): the egg shaped magnet  ======================
+    # ==========================================================================
+    if case == 3:
+        # ======== Settings ========
+        method_parameters = {}
+        method_parameters['xfeatures'] = 20
+        method_parameters['HessianThreshold'] = 1000
+        method_parameters['num_features'] = 5
+        method_parameters['winSize'] = (30, 30)
+
+        features = None
+        # features = [[ 91.65412903, 102.88677979],
+        #           [134.09725952, 105.9390564 ],
+        #           [ 88.18359375,  55.8854332 ],
+        #           [ 94.15112305, 136.26904297],
+        #           [ 62.02745438, 101.42308044]
+        #           ]
+        features = [91.65412902832031, 102.88677978515625, 20.0, 144.75820922851562, 134.09725952148438, 105.93905639648438, 19.0, 122.29878234863281, 88.18359375, 55.885433197021484, 18.0, 148.00938415527344, 94.151123046875, 136.26904296875, 17.0, 211.0707550048828, 62.0274543762207, 101.42308044433594, 14.0, 122.03585052490234]
+
+        print('find features', lrc_from_features(features, method_parameters['winSize']))
+        # features = None
+
+        # # give file to test
+        folder_in = '../example_data/'
+        filename_in = '20171207_magnet.avi'
+
+        file_in = os.path.join(folder_in, filename_in)
+
+        check_parameters_features_surf(file_in, method_parameters,features=features, frame=100)

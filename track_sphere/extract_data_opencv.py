@@ -5,12 +5,11 @@ from tqdm import tqdm
 
 from scipy.ndimage import measurements
 
-
 from time import sleep
 import sys, json
 
 from track_sphere.utils import *
-
+import matplotlib.pyplot as plt
 
 def test_grab_frame(file_in, verbose=False):
     """
@@ -38,7 +37,7 @@ def test_grab_frame(file_in, verbose=False):
 
     return ret
 
-def optical_flow(image_old, image, features, parameters):
+def features_surf(image, points, parameters):
     """
     tracks motion features from image_old to image
 
@@ -46,30 +45,60 @@ def optical_flow(image_old, image, features, parameters):
         image_old: previous frame
         image:  new frame
         features: features in previous frame
-        parameters: paramters for optical flow calculations, dictionary with:
+        parameters: parameters for optical flow calculations, dictionary with:
             winSize: 2 tuple
-            maxLevel: int
-            criteria: 3 tupple
 
     Returns: features in image
 
     """
+
+    winSize = parameters['winSize']
+
+    # for pt in points:
+    #     sub_image
+
+
     # calculate optical flow
     features_new, st, err = cv.calcOpticalFlowPyrLK(image_old, image, features, None, **parameters)
     # Select good points
     good_new = features_new[st == 1]
     good_old = features[st == 1]
 
-    return good_new
+# def optical_flow_features_surf(image_old, image, features, parameters):
+#     """
+#     tracks motion features from image_old to image
+#
+#     Args:
+#         image_old: previous frame
+#         image:  new frame
+#         features: features in previous frame
+#         parameters: paramters for optical flow calculations, dictionary with:
+#             winSize: 2 tuple
+#             maxLevel: int
+#             criteria: 3 tupple
+#
+#     Returns: features in image
+#
+#     """
+#     # calculate optical flow
+#     features_new, st, err = cv.calcOpticalFlowPyrLK(image_old, image, features, None, **parameters)
+#     # Select good points
+#     good_new = features_new[st == 1]
+#     good_old = features[st == 1]
+#
+#     return good_new
 
-def features_surf(image, parameters, return_image=False):
+def features_surf(image, parameters, features = None, return_image=False):
     """
     finds features in image using the SURF algorithm
     Args:
         image: image to be analysed
         return_image: if True returns image where showing all the features
         parameters: dictionary containing
-        xfeatures, HessianThreshold
+            xfeatures, HessianThreshold, num_features, winSize
+        points: points where to look for features, this is the lower right corner of a rectangle with size winSize
+
+        winSize: size of window, when points is provided
 
     Returns:
         data, image with annotation
@@ -81,7 +110,54 @@ def features_surf(image, parameters, return_image=False):
 
     surf.setHessianThreshold(parameters['HessianThreshold'])
 
-    kp, des = surf.detectAndCompute(image, None)
+
+    if features is None:
+        # if there are no points determined find features in whole image
+        kp, des = surf.detectAndCompute(image, None)
+
+
+
+    else:
+        w, h = parameters['winSize']
+        kp = []
+
+        lrcs = lrc_from_features(features, parameters['winSize'])
+        for i, (x, y) in enumerate(lrcs):
+            # create a mask to focus on roi
+            mask = np.zeros(image.shape[:2]).astype(np.uint8)
+            cv.circle(mask, (x, y), w, 1, thickness=-1)
+            kpo, des = surf.detectAndCompute(image, mask)
+
+
+            # fig = plt.figure()
+            # plt.imshow(mask)
+            # fig.savefig('i.jpg')
+            #
+
+            print(np.sum(image), np.sum(mask))
+            print(i,'==', x, y, kpo[0].pt)
+            kp.append(kpo[0])
+            #
+            # subimg = cv.SetImageRoi(image, cv.Rect(lrc[0], lrc[1], w, h))
+            #
+            # subimg = image[lrc[1]:lrc[1]+h:, lrc[0]:lrc[0]+w]
+            # kpo, des = surf.detectAndCompute(subimg, None)
+            # print('===>', lrc, kpo)
+            # print(np.shape(subimg))
+            #
+            #
+            # x = subimg
+            # if len(kpo)>0:
+            #
+            #     kp.append(kpo[0])
+
+    print('====>sadasdad', len(kp))
+
+    print([k.pt for k in kp])
+
+    # w, h = parameters['winSize']
+    # kp, des = surf.detectAndCompute(image, None)
+    # lrcs = lrc_from_features(features, parameters['winSize'])
 
     data = []
     # we expect num_features bright spots
@@ -91,18 +167,116 @@ def features_surf(image, parameters, return_image=False):
         else:
             data += [None, None, None, None]
 
+
+    # image  =  mask
     # generate image that shows the detected features
     if return_image:
         # bright spots on magnet
-        for k in kp:
+        for k in range(min([len(kp), parameters['num_features']])):
             # print(k.angle, k.size, k.pt, (int(k.pt[0]), int(k.pt[1])))
-            cv.circle(image, (int(k.pt[0]), int(k.pt[1])), 5, color=100)
+            cv.circle(image, (int(kp[k].pt[0]), int(kp[k].pt[1])), 5, color=100)
+
+        if features is not None:
+            for lrc in lrcs:
+                print('fffff', lrc)
+                # top-left corner and bottom-right corner of rectangle.
+                cv.rectangle(image, (lrc[0], lrc[1]), (lrc[0]+w, lrc[1]+h), (0, 255, 0), 1)
+
     else:
         image = None
 
     return data, image
 
-# todo: seperate feature detection and ellipse fitting since they are independent
+
+def lrc_from_features(features, winSize, num_features=None):
+    """
+    gets the lower right corner form the center point if a feature
+
+    Args:
+        features: list with features of length (num_features x 4)
+                    the four numbers are angle, size, x, y
+
+    Returns: positions as a array with shape = (num_features, 2)
+
+    """
+    if num_features is None:
+        num_features = int(len(features)/4)
+
+    positions = np.reshape(features, [num_features,  4])[:,:2].astype(int)
+    positions[:, 0] -= int(winSize[0] / 2)
+    positions[:, 1] -= int(winSize[1] / 2)
+
+    return positions
+
+def fit_blob(image, parameters, points, winSize, return_image=False):
+    """
+    fit an ellipse and tracks feature in image
+    Args:
+        image: image to be analysed
+        return_image: if True returns image where showing all the features
+        parameters: dictionary containing
+        threshold, maxval, blockSize, c
+
+    Returns:
+        data, image with annotation
+
+    """
+
+    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    data = []
+    plot_additions = []
+    w, h = winSize
+
+    tmp = []
+    for i, pt in enumerate(points):
+        roi = (int(pt[0]), int(pt[1]), w, h)
+
+        r, c = roi[1] - int(roi[3] / 2), roi[0] - int(roi[2] / 2)
+
+        gray_roi = gray[r:r+h, c:c+w]
+        print(np.shape(gray))
+
+        retVal, thresh = cv.threshold(gray_roi, 0, parameters['maxval'], cv.THRESH_BINARY + cv.THRESH_OTSU)
+
+        # thresh = cv.threshold(gray_roi, 180, parameters['maxval'], cv.THRESH_BINARY)[1]
+
+        im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE, offset=(c,r))
+
+        contour_magnet = max(contours, key=len)
+
+        # make sure it is convex
+        if parameters['convex_hull']:
+            contour_magnet = cv.convexHull(contour_magnet, returnPoints=True)
+
+        ellipse = cv.fitEllipse(contour_magnet)
+
+        # ellipse center, size and angle
+        data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
+
+
+        plot_additions.append([contour_magnet, ellipse, (r, c)])
+
+        tmp.append(gray_roi)
+
+    print('=====', data)
+    # image = gray
+    # generate image that shows the detected features
+    if return_image:
+
+        for i, (contour_magnet, ellipse, (r, c)) in enumerate(plot_additions):
+            # outline of magnet contour
+            cv.drawContours(image, [contour_magnet], -1, (0, 255, 0), 1)
+            # initial point
+            cv.circle(image, (c+int(0.5*w), r+int(0.5*h)), 2, (0, 0, 255), -1)
+            # roi
+            cv.rectangle(image, (c, r), (c+w, r+h), (0, 255, 0), 1)
+            # outline of ellipse
+            cv.ellipse(image, ellipse, (0, 0, 255), 1)
+    else:
+        image = None
+
+    return data, image, tmp
+
 def fit_ellipse(image, parameters, return_image=False):
     """
     fit an ellipse and tracks feature in image
@@ -191,7 +365,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         buffer_time:  wait time between frames, needed because of some buffer issues of opencv
 
-        method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px', 'fit_ellipse', 'features_surf'
+        method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px', 'fit_ellipse', 'features_surf', 'optical_flow'
         method_parameters: method specific parameters
 
     Returns:
@@ -354,6 +528,9 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         if 'num_features' not in method_parameters:
             method_parameters['num_features'] = 5
 
+    elif method == 'optical_flow':
+        method_parameters['num_features'] = 5
+
     elif method == 'Bright px':
         # the names of the data we will extract
         data_header = ['bright px x', 'bright px y']
@@ -417,6 +594,9 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             elif method == 'Bright px':
 
                 frame_out = frame_in
+                # todo: check if the following two lines work:
+                # (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame_out)
+                # frame_data = [maxLoc[0], maxLoc[1]]
 
                 brightest_px = np.unravel_index(np.argmax(frame_in[:, :, 0]), (info['Width'], info['Height']))
                 frame_data = [brightest_px[0], brightest_px[1]]

@@ -32,6 +32,21 @@ def load_video_info(filename):
 
     return info
 
+
+def roi_2_roi_tlc(roi):
+    """
+
+    converts the roi with x,y,w,h that is centered at x,y to a roi that is defined by the top-left-corner
+
+    Args:
+        roi: (x, y, w, h)
+
+    Returns:
+        roi_tlc: (r, c, w, h)
+
+    """
+    return (roi[1] - int(roi[3] / 2), roi[0] - int(roi[2] / 2), roi[3], roi[2])
+
 def power_spectral_density(x, time_step, frequency_range = None):
     """
     returns the *single sided* power spectral density of the time trace x which is sampled at intervals time_step

@@ -13,7 +13,7 @@ method = 'features_surf'
 folder_in = '../example_data/'
 filename_in = '20171207_magnet.avi'
 
-export_video = False
+export_video = True
 output_fps = 10
 output_images=200
 
