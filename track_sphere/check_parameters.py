@@ -1,3 +1,7 @@
+# this module contains a few functions that allow to test parameters on single frames before applying them to extract information from entire videos
+
+
+
 from track_sphere.extract_data_opencv import fit_ellipse, features_surf, lrc_from_features
 import os
 import cv2 as cv

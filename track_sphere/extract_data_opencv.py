@@ -362,6 +362,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
 
     if verbose:
+        print('video info:')
         print(info)
     # if not specified, get code from input file
     if fourcc is None:
@@ -372,9 +373,8 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
     if max_frame is None:
         max_frame = info['FrameCount']
-
-    # Create some random colors
-    color = np.random.randint(0, 255, (100, 3))
+    if verbose:
+        print('===> passed validity test')
 
     ################################################################################
     #### setup input and output streams
@@ -411,6 +411,8 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     else:
         video_writer = None
 
+    if verbose:
+        print('===> set input output streams')
 
 
     ################################################################################
@@ -538,6 +540,8 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     else:
         print('unknown method. Abort')
         return None
+    if verbose:
+        print('===> setup methods')
 
 
     ################################################################################

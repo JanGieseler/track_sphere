@@ -1,13 +1,9 @@
 import matplotlib.pyplot as plt
-import pims
-from pims import pipeline
-from skimage.color import rgb2gray
-rgb2gray_pipeline = pipeline(rgb2gray)
 from scipy.ndimage.filters import gaussian_filter
 from matplotlib.patches import Rectangle, Circle
 
 import numpy as np
-from track_sphere.utils import power_spectral_density, tracking_error
+from track_sphere.utils import power_spectral_density
 
 def plot_video_frame(file_path, frames, xy_position = None, gaussian_filter_width=None, xylim = None, roi = None, ax = None, radius = 3):
     """
@@ -187,7 +183,6 @@ def plot_psd_vs_time(x, time_step, start_frame = 0, window_length= 1000, end_fra
 
     return fig, ax
 
-
 def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1000, end_frame = None,full_spectrum = True, frequency_range= None, ax = None,  plot_avrg = False):
     """
 
@@ -282,8 +277,6 @@ def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1
 
     return fig, ax
 
-
-
 def plot_timetrace(x, time_step, window_length =1, start=None, end =None, start_end_unit = 'frames', ax = None, verbose = False):
     """
     Takes a file or sequential files with a set of bead positions (such as created by extract_motion), and computes and plots the ringdown
@@ -321,74 +314,3 @@ def plot_tracking_error(data, methods):
     plt.title('Tracking error ({:s})'.format(channel))
     plt.ylabel('Error')
     plt.legend(loc = (1,0.5))
-
-# older stuff
-# def plot_fft(x, frame_rate, start_frame = 0, window_width = 10000, plottype= 'lin'):
-#     """
-#
-#     Args:
-#         x:
-#         frame_rate: frame rate in fps of the original video
-#         start frame: first frame to use for the window
-#         window_width: number of frames to use in window
-#         plottype: 'lin' linear plot, 'log' loglog plot, 'semilogy' semilog y plot
-#
-#     Returns:
-#
-#     """
-#
-#
-#     # x,y = zip(*max_coors)
-#
-#     plt.figure()
-#
-#     if plottype== 'semilogy':
-#         plt.semilogy(freqs[1:], np.abs(fft)[1:])
-#     elif plottype== 'lin':
-#         plt.plot(freqs[1:],np.abs(fft)[1:])
-#     elif plottype== 'log':
-#         plt.loglog(freqs[1:],np.abs(fft)[1:])
-#
-#     plt.title("Fourier Transform")
-#     plt.xlabel('Frequency(Hz)')
-#     plt.ylabel('Amplitude (arb)')
-#     plt.xlim((1,frame_rate/2))
-#     plt.show()
-
-
-def plot_ringdown(filepaths, frequency, window_width, fps, bead_diameter, axis='x', starting_frame=0,
-                  save_filename=None):
-    """
-    Takes a file or sequential files with a set of bead positions (such as created by extract_motion), and computes and plots the ringdown
-    filepaths: a list of filepaths to .csv files containing the bead position trace in (x,y) coordinates
-    frequency: oscillation frequency of mode
-    window_width: width of window centered on frequency over which to integrate
-    fps: frame rate in frames per second of the data
-    bead_diameter: diameter (in um) of the bead
-    axis: either 'x' or 'y', specifies which direction to look at oscillations in (if using the reflection on
-        the right wall, this is x for z mode, y for xy modes)
-    starting_frame: all frames before this one will not be included
-    save_filename: if provided, uses this path to save the plot, otherwise saves in the original filepath .png
-    """
-    assert (axis in ['x', 'y'])
-
-    # bead density in kg/m^3
-    bead_density = 7500
-    # bead density in kg
-    bead_mass = 4 * np.pi / 3 * bead_density * (bead_diameter * 1e-6 / 2) ** 3
-    data_ringdown = []
-    # read all filepaths and combines them into one dataframe for processing
-    for filepath in filepaths:
-        data_ringdown.append(pd.read_csv(filepath, usecols=[1, 2], names=['x', 'y'], skiprows=1))
-    data_ringdown = pd.concat(data_ringdown)
-
-    fit_params, freq, amp_vel, fig = fit_Q(data_ringdown[axis][starting_frame:] * pix_to_um, 1. / fps, bead_mass,
-                                           frequency_range=[frequency - window_width / 2.0,
-                                                            frequency + window_width / 2.0], tmax=45,
-                                           nbin=1e4)
-    plt.title('Ringdown at ' + str(frequency) + 'Hz, Q = ' + str(int(frequency * (fit_params[1] * 60))), fontsize=16)
-
-    if (save_filename == None):
-        save_filename = filepaths[0][-4:] + '.png'
-
-    fig.savefig(save_filename)
