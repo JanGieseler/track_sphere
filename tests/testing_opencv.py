@@ -7,6 +7,33 @@ import numpy as np
 
 
 
+def test_grab_frame(file_in, verbose=False):
+    """
+
+    tests if video can be opened with opencv and frames can be read
+
+    Args:
+        file_in:
+
+    Returns:
+
+    """
+    cap = cv.VideoCapture(file_in, False)  # open input video
+
+    ret, frame_in = cap.read()
+
+    # show output
+    # cv.imshow('frame', frame_in)
+
+    cap.release()
+    # cv.destroyAllWindows()
+
+    if verbose:
+        print(file_in, ':', ret)
+
+    return ret
+
+
 folder_in = '../example_data/'
 filename_in = '20171207_magnet.avi'
 

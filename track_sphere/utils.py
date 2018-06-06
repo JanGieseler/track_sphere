@@ -1,6 +1,8 @@
 import os, yaml
 import numpy as np
 import cv2 as cv
+# import colors
+import pandas as pd
 
 def load_video_info(filename):
     """
@@ -69,7 +71,6 @@ def lrc_from_features(features, winSize, num_features=None):
 
     return positions
 
-
 def points_from_blobs(blobs, num_blobs=None):
     """
     gets the center points from fit_blobs output data
@@ -130,6 +131,56 @@ def select_initial_points(file_in, frame = 0):
     cv.destroyAllWindows()
 
     return positions
+
+
+def load_time_trace(source_folder_positions, video_file_name, methods=[], verbose=False):
+    """
+    Takes in the located in source_folder_positions
+    from which containing the bead positions
+
+    Args:
+        source_folder_positions: folderpath positions data (.dat files obtained with track_sphere.extract_position_data)
+        video_file_name: name of video file from which position data was extracted
+        methods: list of methods used to extract position data
+
+        verbose: if True print some output
+
+    Returns: the position data as a pandas dataframe
+
+    """
+
+
+    assert video_file_name[-4:] == '.avi'
+
+    filepath = os.path.join(source_folder_positions, video_file_name)
+
+    if methods == []:
+        print('define method!')
+
+    info = {}
+    for m, method in enumerate(methods):
+
+        with open(filepath.replace('.avi', '-{:s}.json'.format(method)), 'r') as infile:
+            info_m = yaml.safe_load(infile)
+
+        if m == 0:
+            # load data
+            data = pd.read_csv(filepath.replace('.avi', '-{:s}.dat'.format(method)), index_col=0)
+            info['info'] = info_m['info']
+        else:
+            data = data.join(pd.read_csv(filepath.replace('.avi', '-{:s}.dat'.format(method)), index_col=0))
+        info[method] = {key: info_m[key] for key in ['method', 'skipped_frames', 'method_parameters']}
+
+        if verbose:
+            print('{:s} skipped frames: {:d}'.format(method, len(info[method]['skipped_frames'])))
+
+    if verbose:
+        print('data set contains: ', data.keys())
+        print('data shape is: ', data.shape)
+
+
+
+    return data, info
 
 def power_spectral_density(x, time_step, frequency_range = None):
     """

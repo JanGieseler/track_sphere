@@ -11,32 +11,6 @@ import sys, json
 from track_sphere.utils import *
 import matplotlib.pyplot as plt
 
-def test_grab_frame(file_in, verbose=False):
-    """
-
-    tests if video can be opened with opencv and frames can be read
-
-    Args:
-        file_in:
-
-    Returns:
-
-    """
-    cap = cv.VideoCapture(file_in, False)  # open input video
-
-    ret, frame_in = cap.read()
-
-    # show output
-    # cv.imshow('frame', frame_in)
-
-    cap.release()
-    # cv.destroyAllWindows()
-
-    if verbose:
-        print(file_in, ':', ret)
-
-    return ret
-
 # def optical_flow_features_surf(image_old, image, features, parameters):
 #     """
 #     tracks motion features from image_old to image
