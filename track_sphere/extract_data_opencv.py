@@ -61,6 +61,36 @@ def test_grab_frame(file_in, verbose=False):
 #
 #     return good_new
 
+def is_in_roi(pt, roi):
+    """
+    checks if pt is in region of interest (roi)
+
+    Args:
+        pt:
+        roi:
+
+    Returns:
+
+    """
+    n_roi = True
+    x, y = pt
+    xo, yo, w, h = roi
+
+    if x < xo-0.5*w:
+        n_roi = False
+    if x > xo+0.5*w:
+        n_roi = False
+
+    if y < yo-0.5*h:
+        n_roi = False
+    if y > yo+0.5*h:
+        n_roi = False
+
+
+    return n_roi
+
+
+
 def features_surf(image, parameters, features = None, return_image=False):
     """
     finds features in image using the SURF algorithm
@@ -160,7 +190,8 @@ def features_surf(image, parameters, features = None, return_image=False):
 
     return data, image
 
-def fit_blobs(image, parameters, points, return_image=False):
+
+def fit_blobs(image, parameters, points, return_image=False, verbose=False):
     """
     fit an ellipse and tracks feature in image
     Args:
@@ -198,6 +229,10 @@ def fit_blobs(image, parameters, points, return_image=False):
             contour_magnet = cv.convexHull(contour_magnet, returnPoints=True)
 
         ellipse = cv.fitEllipse(contour_magnet)
+
+        if verbose:
+            if not is_in_roi(ellipse[0], (pt[0], pt[1], w, h)):
+                print('find bolb is failing, try to reduce winSize')
 
         # threshold value
         data += [retVal]
@@ -493,7 +528,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         if 'initial_points' not in method_parameters:
             method_parameters['initial_points'] = [[int(0.5*info['Width']), int(0.5*info['Height'])]]
         if 'winSize' not in method_parameters:
-            method_parameters['winSize'] = (30,30)
+            method_parameters['winSize'] = (20,20)
 
         method_parameters['num_features'] = len(method_parameters['initial_points'])
 
@@ -560,6 +595,10 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     sys.stdout.flush()
     for frame_idx in tqdm(range(min_frame, max_frame)):
         frame_data = [] # this leads keeps the data per frame
+
+        if verbose:
+            print('frame id: ', frame_idx)
+
         try:
             ret, frame_in = cap.read()
         except Exception as e:
@@ -596,7 +635,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
                 frame_data, frame_out = features_surf(frame_in, return_image=return_image, parameters=method_parameters)
 
             elif method == 'fit_blobs':
-                frame_data, frame_out = fit_blobs(frame_in, parameters=method_parameters, points=points, return_image=return_image)
+                frame_data, frame_out = fit_blobs(frame_in, parameters=method_parameters, points=points, return_image=return_image,verbose=verbose)
                 # retrieve the points for the next iteration
                 points = points_from_blobs(frame_data, num_blobs=method_parameters['num_features'])
 
@@ -615,7 +654,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         if output_images>0 and frame_idx%output_images==0:
             cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))), frame_out)
-            cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}_initit.jpg'.format(frame_idx))), frame_in)
+            # cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}_initit.jpg'.format(frame_idx))), frame_in)
 
         data_set.append(frame_data)
 

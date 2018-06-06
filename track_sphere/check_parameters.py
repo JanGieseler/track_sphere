@@ -2,9 +2,10 @@
 
 
 
-from track_sphere.extract_data_opencv import fit_ellipse, features_surf, lrc_from_features
+from track_sphere.extract_data_opencv import fit_ellipse, features_surf, lrc_from_features, fit_blobs
 import os
 import cv2 as cv
+from track_sphere.utils import select_initial_points
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -34,6 +35,38 @@ def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
 
 
     print('fitellipse', data)
+
+    cv.imwrite(file_out, frame_out)
+
+
+    cap.release()
+    cv.destroyAllWindows()
+
+def check_parameters_fit_blobs(file_in, method_parameters, points, frame = 0):
+    """
+    opens a video and runs fit_blobson the first frame using the parameters method_parameters
+    shows the result
+    Args:
+        file_in:
+        method_parameters:
+
+    Returns: image
+
+    """
+
+    file_out = file_in.replace('.avi', 'test.jpg')
+
+    cap = cv.VideoCapture(file_in)
+    cap.set(cv.CAP_PROP_POS_FRAMES, frame)  # set the starting frame for reading to min frame
+
+    # read frame
+    ret, frame = cap.read()
+    # fit ellipse
+    data, frame_out = fit_blobs(frame, method_parameters, points=points, return_image=True)
+
+
+
+    print('fitblobs', data)
 
     cv.imwrite(file_out, frame_out)
 
@@ -80,7 +113,7 @@ def check_parameters_features_surf(file_in, method_parameters, features=None, fr
     cv.destroyAllWindows()
 
 if __name__ == '__main__':
-    case = 3
+    case = 4
 
     # ========================================================
     # ==== Case 1 (fit_ellipse): the egg shaped magnet =======
@@ -132,7 +165,7 @@ if __name__ == '__main__':
 
         check_parameters_fit_ellipse(file_in, method_parameters, frame=1000)
 
-
+    1768
     # ==========================================================================
     # ==== Case 3 (features_surf): the egg shaped magnet  ======================
     # ==========================================================================
@@ -163,3 +196,40 @@ if __name__ == '__main__':
         file_in = os.path.join(folder_in, filename_in)
 
         check_parameters_features_surf(file_in, method_parameters,features=features, frame=100)
+
+    # ==========================================================================
+    # ==== Case 4 (fit_blobs): the egg shaped magnet =======
+    # ==========================================================================
+    if case == 4:
+        method = 'fit_blobs'
+        # ======== Settings ========
+        folder_in = '../example_data/'
+        filename_in = '20171207_magnet.avi'
+
+        export_video = False
+        output_fps = 10
+        output_images = 1000
+
+        method_parameters = {}
+        method_parameters['initial_points'] = [[60, 109], [89, 66], [91, 108], [96, 142], [139, 113]]
+        method_parameters['winSize'] = (20,20)
+        method_parameters['maxval'] = 255
+        method_parameters['convex_hull'] = False
+
+
+        # ----- end settings --------
+
+        export_parameters = {
+            'export_video': export_video,
+            'output_fps': output_fps,
+            'output_images': output_images
+        }
+
+
+        file_in = os.path.join(folder_in, filename_in)
+
+        if method == 'fit_blobs' and method_parameters['initial_points'] is None:
+            method_parameters['initial_points'] = select_initial_points(file_in)
+
+
+        check_parameters_fit_blobs(file_in, method_parameters, points=method_parameters['initial_points'], frame=1775)
