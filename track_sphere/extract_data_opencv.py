@@ -357,8 +357,10 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
     if export_video:
         if os.path.exists(file_out):
-            print('output file exists. Abort operation')
-            return None
+            res = input('output file exists. Abort operation (y/n)')
+            if not res == 'y':
+                print('User stopped script')
+                return None
 
     if output_images>0:
         img_dir = file_out.replace('.avi', '-img')
