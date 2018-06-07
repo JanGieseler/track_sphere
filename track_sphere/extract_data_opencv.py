@@ -341,6 +341,15 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         file_in_info = file_in
 
 
+    if 'reencode' in method_parameters:
+        #../raw_data/20180529_Sample6_bead_1_direct_thermal_01c-segmented/20180529_Sample6_bead_1_direct_thermal_01c-98.json
+        segmented = method_parameters['reencode']
+        # if the file has been segmented we actually take the video info from the original file
+        file_in_info = file_in
+        file_in = file_in.replace('.avi', '-reencode.avi')
+    else:
+        reencode = False
+        file_in_info = file_in
 
 
     ################################################################################
@@ -350,7 +359,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     assert isinstance(file_in, str)
 
     if file_out is None:
-        file_out = file_in.replace('.avi', '-{:s}.avi'.format(method))
+        file_out = file_in_info.replace('.avi', '-{:s}.avi'.format(method))
 
     # set default values if not in dictionary
     if not 'export_video' in export_parameters:
@@ -369,7 +378,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
     if export_video:
         if os.path.exists(file_out):
-            res = input('output file exists. Abort operation (y/n)')
+            res = input('output file exists. Continuye operation (y/n)')
             if not res == 'y':
                 print('User stopped script')
                 return None

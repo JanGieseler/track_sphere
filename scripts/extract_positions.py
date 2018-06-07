@@ -8,14 +8,25 @@ from track_sphere.extract_data_opencv import *
 
 
 dataset = 'real segemented'
+dataset = 'real'
 
 method = 'Bright px'
 # method = 'fit_blobs'
-# method = 'fit_ellipse'
+method = 'fit_ellipse'
 
 export_video = False
-output_fps = 10
+output_fps = 2
+# output_images = 1000
 output_images = 10000
+
+max_frame = 610000
+# max_frame = 1000
+
+
+export_video = True
+output_fps = 2
+output_images = 10000
+max_frame = 1000
 
 ################################################################################
 #### for our test data
@@ -69,16 +80,18 @@ if dataset == 'test':
 ################################################################################
 if dataset == 'real':
     folder_in = '../raw_data/'
-    filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
-    filename_in = '20180529_Sample6_bead_1_direct_thermal_01c-fixed.avi' # doesn't work!
+    # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c.avi'
+    filename_in = '20180529_Sample6_bead_1_direct_thermal_01c.avi'
+    # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c-fixed.avi' # doesn't work!
     # folder_in = '/Volumes/Elements/lev_data/20180523_Sample_6_bead_1/'
 
-    folder_in = '../raw_data/20180529_Sample6_bead_1_direct_thermal_01c-segmented/'
+    # folder_in = '../raw_data/20180529_Sample6_bead_1_direct_thermal_01c-segmented/'
 
+    # processed_data
+    # folder_out = '../position_data'
+    folder_out = '../'
 
-    folder_out = '../processed_data/position_data'
-
-    method_parameters = {}
+    method_parameters = {'reencode':True}
     if method == 'fit_blobs':
         method_parameters['winSize'] = (16, 16)
         method_parameters['initial_points'] = [[35, 60], [56, 60], [57, 82], [55, 35], [80, 60]]
@@ -87,10 +100,12 @@ if dataset == 'real':
         pass
     elif method == 'fit_ellipse':
         method_parameters['threshold'] = 'gaussian'
-        method_parameters['blockSize'] = 35
+        method_parameters['blockSize'] = 51
         method_parameters['c'] = 11
         method_parameters['maxval'] = 255
         method_parameters['convex_hull'] = True
+
+
 
     # ----- end settings --------
 
@@ -115,10 +130,8 @@ if dataset == 'real':
     # 01c fails at frame 687030
     # 01c_reencode fails at frame 613536, 610000
 
-    print(len(sorted(glob(folder_in + '*.avi'))))
-
-    # extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=None, verbose=False,
-    #                       method=method, method_parameters=method_parameters, export_parameters=export_parameters)
+    extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=max_frame, verbose=False,
+                          method=method, method_parameters=method_parameters, export_parameters=export_parameters)
 
 if dataset == 'real segemented':
 
