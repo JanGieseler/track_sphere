@@ -161,37 +161,6 @@ def load_info(filename):
         info_from_disk = yaml.safe_load(infile)
     return info_from_disk
 
-def reencode_video(filepath, filepath_target = None):
-    """
-
-    uses ffmpeg to reencode the video and removes the first second. This is usually
-    necessary for the 1200fps videos, which are timestamped weirdly and often have the first second
-    corrupted. If you turn this off and receive the error "AVError: [Errno 1094995529] Invalid data found
-    when processing input", try turning this on. Will double the runtime of the function.
-
-    Args:
-        filepath: path to file of original video
-        filepath_target: target file (optional) if None same as input with replacing ".avi" by  "_reencode.avi"
-
-    Returns: nothing but writes reencoded file to disk
-
-    """
-
-    if filepath_target is None:
-        filepath_target = filepath.replace('.avi', '_reencode.avi')
-
-    print('start time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    # command string: ffmpeg -i Z:\...\ringdown.avi -s 1 -c copy Z:\...\ringdown_reencode.avi
-    # calls ffmpeg, -i specifies input path, -ss 1 cuts first second of video, -c copy copies
-    # the input codec and uses it for the output codec, and the last argument is the output file
-    # cutting the first second isn't always necessary, but sometimes the videos will not load without it
-    cmd_string = "ffmpeg -i " + filepath + " -ss 1 -c copy " + filepath_target
-    # performs system (command line) call
-    x = os.system(cmd_string)
-
-    print('end time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    print('wrote:\n{:s}'.format(filepath_target))
-
 
 def get_position_brightest_px(image, roi = None, verbose = False):
     """

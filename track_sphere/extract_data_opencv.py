@@ -452,7 +452,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     elif method == 'fit_ellipse':
 
         data_header = ['contour center x', 'contour center y']
-        data_header += ['ellipse center x', 'ellipse center y', 'ellipse a', 'ellipse b', 'ellipse angle']
+        data_header += ['ellipse x', 'ellipse y', 'ellipse a', 'ellipse b', 'ellipse angle']
         # check and update the method_parameters dictionary
         if method_parameters is None:
             method_parameters = {}

@@ -3,7 +3,7 @@ import numpy as np
 import cv2 as cv
 # import colors
 import pandas as pd
-
+import datetime
 def load_video_info(filename):
     """
     loads the video metadata that has been exported with metainfo (www.MediaArea.net) into a json file
@@ -35,6 +35,79 @@ def load_video_info(filename):
     info.update({key: float(info[key]) for key in ['FrameRate', 'Duration']})
 
     return info
+
+def ffmpeg_reencode_video(filepath, filepath_target = None):
+    """
+
+    uses ffmpeg to reencode the video and removes the first second. This is usually
+    necessary for the 1200fps videos, which are timestamped weirdly and often have the first second
+    corrupted. If you turn this off and receive the error "AVError: [Errno 1094995529] Invalid data found
+    when processing input", try turning this on. Will double the runtime of the function.
+
+    Args:
+        filepath: path to file of original video
+        filepath_target: target file (optional) if None same as input with replacing ".avi" by  "_reencode.avi"
+
+    Returns: nothing but writes reencoded file to disk
+
+    """
+
+    if filepath_target is None:
+        filepath_target = filepath.replace('.avi', '_reencode.avi')
+
+    print('start time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    # command string: ffmpeg -i Z:\...\ringdown.avi -s 1 -c copy Z:\...\ringdown_reencode.avi
+    # calls ffmpeg, -i specifies input path, -ss 1 cuts first second of video, -c copy copies
+    # the input codec and uses it for the output codec, and the last argument is the output file
+    # cutting the first second isn't always necessary, but sometimes the videos will not load without it
+    cmd_string = "ffmpeg -i " + filepath + " -ss 1 -c copy " + filepath_target
+    # performs system (command line) call
+    x = os.system(cmd_string)
+
+    print('end time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    print('wrote:\n{:s}'.format(filepath_target))
+
+def ffmpeg_segment_video(file_in, segmentation_frames):
+    """
+
+    uses ffmpeg to reencode the video and removes the first second. This is usually
+    necessary for the 1200fps videos, which are timestamped weirdly and often have the first second
+    corrupted. If you turn this off and receive the error "AVError: [Errno 1094995529] Invalid data found
+    when processing input", try turning this on. Will double the runtime of the function.
+
+    Args:
+        filepath: path to file of original video
+        filepath_target: target file (optional) if None same as input with replacing ".avi" by  "_reencode.avi"
+
+    Returns: nothing but writes reencoded file to disk
+
+    """
+
+    # turn numbers into a list of strings
+    segment_frames = ['{:d}'.format(f) for f in segmentation_frames]
+    number_of_frame_digits = len(max(segment_frames, key=len))
+    # turn list of strings into single string
+    segment_frames = ' '.join(segment_frames)
+
+    file_out = file_in.replace('.avi', '-chop%0'+ str(number_of_frame_digits) + 'd.avi')
+    # file_out = os.path.join(os.path.join(os.path.dirname(file_out), 'chop'), os.path.basename(file_out))
+    file_out = os.path.join(os.path.dirname(file_out), os.path.basename(file_out))
+
+    file_segment = file_out.replace('-chop%0'+ str(number_of_frame_digits) + 'd.avi', '-segments.csv')
+
+    # Segment the input file by splitting the input file according to the frame numbers sequence
+    # specified with the segment_frames option:
+    cmd_string = 'ffmpeg -i ' + file_in + ' -codec copy -map 0 -f '
+    cmd_string += 'segment -segment_list ' + file_segment + ' -segment_frames '+segment_frames+' ' + file_out
+
+
+
+    print('start time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    print(cmd_string)
+    x = os.system(cmd_string)
+    print('end time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    print('wrote:\n{:s}'.format(file_out))
+
 
 
 def roi_2_roi_tlc(roi):
@@ -132,7 +205,6 @@ def select_initial_points(file_in, frame = 0):
 
     return positions
 
-
 def load_time_trace(source_folder_positions, video_file_name, methods=[], verbose=False):
     """
     Takes in the located in source_folder_positions
@@ -210,3 +282,11 @@ def power_spectral_density(x, time_step, frequency_range = None):
         p = p[bRange]
 
     return f, p
+
+if __name__ == '__main__':
+    folder_in = '../example_data/'
+    filename_in = '20171207_magnet.avi'
+
+    file_in = os.path.join(folder_in, filename_in)
+    number_of_frames = [200, 400]
+    ffmpeg_segment_video(file_in, number_of_frames)
