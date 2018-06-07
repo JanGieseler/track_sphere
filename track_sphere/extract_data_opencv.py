@@ -331,6 +331,18 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
 
 
+    if 'segmented' in method_parameters:
+        #../raw_data/20180529_Sample6_bead_1_direct_thermal_01c-segmented/20180529_Sample6_bead_1_direct_thermal_01c-98.json
+        segmented = method_parameters['segmented']
+        # if the file has been segmented we actually take the video info from the original file
+        file_in_info = os.path.join(os.path.dirname(os.path.dirname(file_in)), os.path.basename(os.path.dirname(file_in)).replace('-segmented', '.avi'))
+    else:
+        segmented = False
+        file_in_info = file_in
+
+
+
+
     ################################################################################
     #### checks the validity of the inputs and checks for existing files
     ################################################################################
@@ -369,7 +381,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             os.makedirs(img_dir)
 
     #get the metadata from the input file
-    info = load_video_info(file_in)
+    info = load_video_info(file_in_info)
 
 
     if verbose:

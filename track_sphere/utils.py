@@ -36,7 +36,7 @@ def load_video_info(filename):
 
     return info
 
-def ffmpeg_reencode_video(filepath, filepath_target = None):
+def ffmpeg_reencode_video(filepath, filepath_target = None, start_time=0):
     """
 
     uses ffmpeg to reencode the video. This is usually
@@ -47,6 +47,7 @@ def ffmpeg_reencode_video(filepath, filepath_target = None):
     Args:
         filepath: path to file of original video
         filepath_target: target file (optional) if None same as input with replacing ".avi" by  "_reencode.avi"
+        start_time: start time of video in seconds)
 
     Returns: nothing but writes reencoded file to disk
 
@@ -60,7 +61,11 @@ def ffmpeg_reencode_video(filepath, filepath_target = None):
     # calls ffmpeg, -i specifies input path, -ss 1 cuts first second of video, -c copy copies
     # the input codec and uses it for the output codec, and the last argument is the output file
     # cutting the first second isn't always necessary, but sometimes the videos will not load without it
-    cmd_string = "ffmpeg -i " + filepath + " -ss 1 -c copy " + filepath_target
+
+    if start_time>0:
+        cmd_string = "ffmpeg -i " + filepath + ' -ss {:d} -c copy '.format(start_time) + filepath_target
+
+
     # performs system (command line) call
     x = os.system(cmd_string)
 
@@ -99,10 +104,10 @@ def ffmpeg_segment_video(file_in, segmentation_frames=None):
         segmentation_frames = list(range(segmentation_length,frame_count-segmentation_length, segmentation_length))
 
     # turn numbers into a list of strings
-    segment_frames = ['{:d}'.format(f) for f in segmentation_frames]
-    number_of_frame_digits = len(max(segment_frames, key=len))
+    segmentation_frames = ['{:d}'.format(f) for f in segmentation_frames]
+    number_of_frame_digits = len(str(len(segmentation_frames)))
     # turn list of strings into single string
-    segment_frames = ','.join(segment_frames)
+    segmentation_frames = ','.join(segmentation_frames)
 
     file_out = file_in.replace('.avi', '-chop%0'+ str(number_of_frame_digits) + 'd.avi')
 
@@ -122,8 +127,80 @@ def ffmpeg_segment_video(file_in, segmentation_frames=None):
     # specified with the segment_frames option:
     # should be something like:
     # print('ffmpeg -i ../example_data/20171207_magnet.avi -codec copy -map 0 -f segment -segment_list ../example_data/20171207_magnet-segments.csv -segment_frames 100,200,300,500,800 ../example_data/20171207_magnet-chop%03d.avi')
+    # cmd_string = 'ffmpeg -i ' + file_in + ' -codec copy -map 0 -f '
+    # cmd_string += 'segment -segment_list ' + file_segment + ' -segment_frames '+segmentation_frames+' ' + file_out
+
     cmd_string = 'ffmpeg -i ' + file_in + ' -codec copy -map 0 -f '
-    cmd_string += 'segment -segment_list ' + file_segment + ' -segment_frames '+segment_frames+' ' + file_out
+    cmd_string += 'segment -segment_list ' + file_segment + ' -segment_frames ' + segmentation_frames + ' -reset_timestamps 1 ' + file_out
+
+
+
+    print('start time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    print(cmd_string)
+    x = os.system(cmd_string)
+    print('end time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    print('wrote:\n{:s}'.format(file_out))
+
+def ffmpeg_segment_video(file_in, segmentation_frames=None):
+    """
+
+    uses ffmpeg to segment the video
+
+    Args:
+        file_in: path to file of original video
+        segmentation_frames: list of frames where to cut the video or number that gives the number of segments
+
+    Returns: nothing but writes reencoded file to disk into subfolder with name of video-segmented
+
+    """
+
+
+    if segmentation_frames is None:
+        info = load_video_info(file_in)
+        print('no sementation frames provdided. Give list of frames or number of segmentations!')
+        print(info)
+        return
+
+    elif not isinstance(segmentation_frames, list):
+        frame_count = load_video_info(file_in)['FrameCount']
+        segmentation_length = int(frame_count/segmentation_frames)
+        print('video has {:d} frames, will segment into {:d} frames of length {:d}'.format(
+            frame_count,
+            segmentation_frames,
+            segmentation_length
+        ))
+
+        segmentation_frames = list(range(segmentation_length,frame_count-segmentation_length, segmentation_length))
+
+    # turn numbers into a list of strings
+    segmentation_frames = ['{:d}'.format(f) for f in segmentation_frames]
+    number_of_frame_digits = len(str(len(segmentation_frames)))
+    # turn list of strings into single string
+    segmentation_frames = ','.join(segmentation_frames)
+
+    file_out = file_in.replace('.avi', '-%0'+ str(number_of_frame_digits) + 'd.avi')
+
+
+    subfolder = os.path.basename(file_in).replace('.avi', '-segmented')
+    segmentation_dir = os.path.join(os.path.join(os.path.dirname(file_out), subfolder))
+
+    if not os.path.exists(segmentation_dir):
+        os.makedirs(segmentation_dir)
+
+    file_out = os.path.join(segmentation_dir, os.path.basename(file_out))
+    # file_out = os.path.join(os.path.dirname(file_out), os.path.basename(file_out))
+
+    file_segment = file_out.replace('-chop%0'+ str(number_of_frame_digits) + 'd.avi', '-segments.csv')
+
+    # Segment the input file by splitting the input file according to the frame numbers sequence
+    # specified with the segment_frames option:
+    # should be something like:
+    # print('ffmpeg -i ../example_data/20171207_magnet.avi -codec copy -map 0 -f segment -segment_list ../example_data/20171207_magnet-segments.csv -segment_frames 100,200,300,500,800 ../example_data/20171207_magnet-chop%03d.avi')
+    # cmd_string = 'ffmpeg -i ' + file_in + ' -codec copy -map 0 -f '
+    # cmd_string += 'segment -segment_list ' + file_segment + ' -segment_frames '+segmentation_frames+' ' + file_out
+
+    cmd_string = 'ffmpeg -i ' + file_in + ' -codec copy -map 0 -f '
+    cmd_string += 'segment -segment_list ' + file_segment + ' -segment_frames ' + segmentation_frames + ' -reset_timestamps 1 ' + file_out
 
 
 
@@ -311,31 +388,24 @@ if __name__ == '__main__':
     folder_in = '../example_data/'
     filename_in = '20171207_magnet.avi'
 
-    # folder_in = '../raw_data/'
+    folder_in = '../raw_data/'
     # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
+    filename_in = '20180529_Sample6_bead_1_direct_thermal_01c.avi'
+    # filename_in = '20180523_Sample6_bead_1_direct_thermal_03_reencode.avi'
+    # filename_in = '20180524_Sample6_bead_1_direct_thermal_pump_isolated_10b.avi'
+
 
     file_in = os.path.join(folder_in, filename_in)
-    number_of_frames = [200, 400]
-    ffmpeg_segment_video(file_in, 5)
 
 
+    ffmpeg_segment_video(file_in, 100)
 
+
+    # fix key
+    # file_out = file_in.replace('.avi', '-fixed.avi')
+    # cmd_string = 'ffmpeg -i ' + file_in + ' -codec copy '
+    # cmd_string += ' -reset_timestamps 1 ' + file_out
     #
-    # file_in = os.path.join(folder_in, filename_in)
-    # file_out = file_in.replace('.avi', '-chop%03d.avi')
-    #
-    # segment_list = file_in.replace('.avi', '-segments.csv')
-    #
-    # # ffmpeg -i INFILE.mp4 -vcodec copy -acodec copy -ss 00:01:00.000 -t 00:00:10.000 OUTFILE.mp4
-    # cmd_string = "ffmpeg -i " + file_in + " -vcodec -start_number 1 -vframes 100 copy " + file_out
-    #
-    # # ffmpeg -i in.mp4 -ss [start] -t [duration] -c copy out.mp4
-    # cmd_string = 'ffmpeg -i ' + file_in + ' -ss [start] -t [duration] -c copy ' + file_out
-    #
-    # cmd_string = 'ffmpeg -i segment_frames'
-    # # Segment the input file by splitting the input file according to the frame numbers sequence
-    # # specified with the segment_frames option:
-    # cmd_string = 'ffmpeg -i ' + file_in + ' -codec copy -map 0 -f \
-    # segment -segment_list ' + segment_list + ' -segment_frames 100,200,300,500,800 ' + file_out
     # print(cmd_string)
-    # # x = os.system(cmd_string)
+    # x = os.system(cmd_string)
+
