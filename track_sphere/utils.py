@@ -39,7 +39,7 @@ def load_video_info(filename):
 def ffmpeg_reencode_video(filepath, filepath_target = None):
     """
 
-    uses ffmpeg to reencode the video and removes the first second. This is usually
+    uses ffmpeg to reencode the video. This is usually
     necessary for the 1200fps videos, which are timestamped weirdly and often have the first second
     corrupted. If you turn this off and receive the error "AVError: [Errno 1094995529] Invalid data found
     when processing input", try turning this on. Will double the runtime of the function.
@@ -67,21 +67,36 @@ def ffmpeg_reencode_video(filepath, filepath_target = None):
     print('end time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     print('wrote:\n{:s}'.format(filepath_target))
 
-def ffmpeg_segment_video(file_in, segmentation_frames):
+def ffmpeg_segment_video(file_in, segmentation_frames=None):
     """
 
-    uses ffmpeg to reencode the video and removes the first second. This is usually
-    necessary for the 1200fps videos, which are timestamped weirdly and often have the first second
-    corrupted. If you turn this off and receive the error "AVError: [Errno 1094995529] Invalid data found
-    when processing input", try turning this on. Will double the runtime of the function.
+    uses ffmpeg to segment the video
 
     Args:
-        filepath: path to file of original video
-        filepath_target: target file (optional) if None same as input with replacing ".avi" by  "_reencode.avi"
+        file_in: path to file of original video
+        segmentation_frames: list of frames where to cut the video or number that gives the number of segments
 
-    Returns: nothing but writes reencoded file to disk
+    Returns: nothing but writes reencoded file to disk into subfolder with name of video-segmented
 
     """
+
+
+    if segmentation_frames is None:
+        info = load_video_info(file_in)
+        print('no sementation frames provdided. Give list of frames or number of segmentations!')
+        print(info)
+        return
+
+    elif not isinstance(segmentation_frames, list):
+        frame_count = load_video_info(file_in)['FrameCount']
+        segmentation_length = int(frame_count/segmentation_frames)
+        print('video has {:d} frames, will segment into {:d} frames of length {:d}'.format(
+            frame_count,
+            segmentation_frames,
+            segmentation_length
+        ))
+
+        segmentation_frames = list(range(segmentation_length,frame_count-segmentation_length, segmentation_length))
 
     # turn numbers into a list of strings
     segment_frames = ['{:d}'.format(f) for f in segmentation_frames]
@@ -117,7 +132,6 @@ def ffmpeg_segment_video(file_in, segmentation_frames):
     x = os.system(cmd_string)
     print('end time:\t{:s}'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     print('wrote:\n{:s}'.format(file_out))
-
 
 
 def roi_2_roi_tlc(roi):
@@ -297,9 +311,12 @@ if __name__ == '__main__':
     folder_in = '../example_data/'
     filename_in = '20171207_magnet.avi'
 
+    # folder_in = '../raw_data/'
+    # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
+
     file_in = os.path.join(folder_in, filename_in)
     number_of_frames = [200, 400]
-    ffmpeg_segment_video(file_in, number_of_frames)
+    ffmpeg_segment_video(file_in, 5)
 
 
 
