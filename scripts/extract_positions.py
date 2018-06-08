@@ -9,6 +9,7 @@ from track_sphere.extract_data_opencv import *
 
 dataset = 'real segemented'
 dataset = 'real'
+dataset = '20180607_Sample6_bead_1'
 
 method = 'Bright px'
 # method = 'fit_blobs'
@@ -21,12 +22,14 @@ output_images = 10000
 
 max_frame = 610000
 # max_frame = 1000
+max_frame = None
+# method_parameters = {'reencode':True}
+method_parameters = {}
 
-
-export_video = True
-output_fps = 2
-output_images = 10000
-max_frame = 1000
+# export_video = True
+# output_fps = 2
+# output_images = 10000
+# max_frame = 1000
 
 ################################################################################
 #### for our test data
@@ -74,7 +77,6 @@ if dataset == 'test':
 
     extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=None, verbose=False,
                           method=method, method_parameters=method_parameters, export_parameters=export_parameters)
-
 ################################################################################
 #### for real data
 ################################################################################
@@ -176,3 +178,64 @@ if dataset == 'real segemented':
 
         extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=None, verbose=False,
                               method=method, method_parameters=method_parameters, export_parameters=export_parameters)
+################################################################################
+#### for real data: 20180607_Sample6_bead_1
+################################################################################
+
+if dataset == '20180607_Sample6_bead_1':
+    folder_in = '../raw_data/20180607_Sample6_bead_1/'
+    # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c.avi'
+    filename_in = '20180607_Sample_6_Bead_1.avi'
+    filename_in = '20180607_Sample_6_Bead_2.avi'
+    # filename_in = '20180607_Sample_6_Bead_3.avi'
+    filename_in = '20180608_Sample_6_Bead_4.avi'
+    # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c-fixed.avi' # doesn't work!
+    # folder_in = '/Volumes/Elements/lev_data/20180523_Sample_6_bead_1/'
+
+    # folder_in = '../raw_data/20180529_Sample6_bead_1_direct_thermal_01c-segmented/'
+
+    # processed_data
+    folder_out = '../processed_data/position_data'
+    # folder_out = '../'
+
+
+    if method == 'fit_blobs':
+        method_parameters['winSize'] = (16, 16)
+        method_parameters['initial_points'] = [[35, 60], [56, 60], [57, 82], [55, 35], [80, 60]]
+        method_parameters['initial_points'] = None
+    elif method == 'Bright px':
+        pass
+    elif method == 'fit_ellipse':
+        method_parameters['threshold'] = 'gaussian'
+        method_parameters['blockSize'] = 51
+        method_parameters['c'] = 11
+        method_parameters['maxval'] = 255
+        method_parameters['convex_hull'] = True
+
+
+
+    # ----- end settings --------
+
+
+    export_parameters = {
+        'export_video': export_video,
+        'output_fps': output_fps,
+        'output_images': output_images
+    }
+
+    filename_out = filename_in.replace('.avi', '-{:s}.avi'.format(method))
+
+
+    file_in = os.path.join(folder_in, filename_in)
+    file_out = os.path.join(folder_out, filename_out)
+
+
+
+    if method == 'fit_blobs' and method_parameters['initial_points'] is None:
+        method_parameters['initial_points'] = select_initial_points(file_in)
+
+    # 01c fails at frame 687030
+    # 01c_reencode fails at frame 613536, 610000
+
+    extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=max_frame, verbose=False,
+                          method=method, method_parameters=method_parameters, export_parameters=export_parameters)

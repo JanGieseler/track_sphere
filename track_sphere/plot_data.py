@@ -5,6 +5,36 @@ from matplotlib.patches import Rectangle, Circle
 import numpy as np
 from track_sphere.utils import power_spectral_density
 
+
+def annotate_frequencies(ax, annotation_dict, higher_harm=1):
+    """
+
+    annotates the plot on axis ax
+
+    Args:
+        ax:
+        annotation_dict: dictionary where keys are the text label and values are [x, y] coordinates
+        higher_harm:
+
+    Returns:
+
+    """
+    for k, (x, y) in annotation_dict.items():
+        for hh in range(higher_harm):
+
+            if hh == 0:
+                text = k
+            else:
+                text = '2' + k
+                x = 2 * x
+                y += 0.2
+
+            ax.plot([x, x], [y - 0.2, y], '--')
+            ax.annotate(text, xy=(x, y), xytext=(x + 1, y),
+                        arrowprops=None,
+                        )
+
+
 def plot_video_frame(file_path, frames, xy_position = None, gaussian_filter_width=None, xylim = None, roi = None, ax = None, radius = 3):
     """
 
