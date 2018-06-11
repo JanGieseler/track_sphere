@@ -64,7 +64,6 @@ def is_in_roi(pt, roi):
     return n_roi
 
 
-
 def features_surf(image, parameters, features = None, return_image=False):
     """
     finds features in image using the SURF algorithm
@@ -164,7 +163,63 @@ def features_surf(image, parameters, features = None, return_image=False):
 
     return data, image
 
+def moments_roi(image, parameters, points, return_image=False, verbose=False):
+    """
 
+    returns the centroid of the regions of interest that are centered around points
+
+    Note that this function is not that great to get the location of the center of the bright spot if there is a non-zero background!
+
+    Args:
+        image:
+        parameters:
+        points:
+        return_image:
+        verbose:
+
+    Returns:
+
+    """
+
+    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    data = []  # store the data
+    plot_additions = []  # store the information to add the roi, ellipses to the image
+    w, h = parameters['winSize']
+
+    for i, pt in enumerate(points):
+
+        r, c = int(pt[1]) - int(0.5*h), int(pt[0]) - int(0.5*w)
+        # select subimage of interest
+        gray_roi = gray[r:r+h, c:c+w]
+
+        moments = cv.moments(gray_roi)
+
+        cx, cy = moments['m10'] / moments['m00'], moments['m01'] / moments['m00']
+        cx, cy = cx+c, cy+r # correct for offset
+
+        data += [cx, cy]
+
+        # save values for plotting
+        if return_image:
+            pass
+            plot_additions.append([(cx, cy), (c, r)])
+
+
+    # generate image that shows the detected features
+    if return_image:
+        for i, ((cx, cy), (c, r)) in enumerate(plot_additions):
+            # initial point
+            cv.circle(image, (c+int(0.5*w), r+int(0.5*h)), 2, (0, 0, 255), -1)
+            # roi
+            cv.rectangle(image, (c, r), (c+w, r+h), (255, 0, 0), 1)
+            # center of blob (moment)
+            cv.circle(image, (int(cx), int(cy)), 1, (0, 255, 0), -1)
+    else:
+        image = None
+
+
+
+    return data, image
 def fit_blobs(image, parameters, points, return_image=False, verbose=False):
     """
     fit an ellipse and tracks feature in image
@@ -274,8 +329,8 @@ def fit_ellipse(image, parameters, return_image=False):
 
 
     M = cv.moments(contour_magnet)
-    cX = int(M["m10"] / M["m00"])
-    cY = int(M["m01"] / M["m00"])
+    cX = M["m10"] / M["m00"]
+    cY = M["m01"] / M["m00"]
 
     ellipse = cv.fitEllipse(contour_magnet)
 

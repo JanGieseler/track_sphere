@@ -35,102 +35,6 @@ def annotate_frequencies(ax, annotation_dict, higher_harm=1):
                         )
 
 
-def plot_video_frame(file_path, frames, xy_position = None, gaussian_filter_width=None, xylim = None, roi = None, ax = None, radius = 3):
-    """
-
-    plots frames of the video
-
-    Args:
-        file_path: path to video file
-        frames: integer or list of integers of the frames to be plotted
-        xy_position: xy position of the magnet. If provided, this position will be plotted on top of  the image
-        gaussian_filter_width: if not None apply Gaussian filter
-        xylim: xylim to zoom in on a region, if not specified (ie None) show full image
-
-        roi: region of interest, this allows to limit the search to a region of interest with the frame, the structure is
-        roi = [roi_center, roi_dimension], where
-            roi_center = [ro, co], roi_dimension = [h, w], where
-            ro, co is the center of the roi (row, columns) and
-            w, h is the width and the height of the roi
-
-            Note that roi dimensions w, h should be odd numbers!
-
-        radius: sets the radiusof the circle that indicte the position xy
-
-    """
-
-
-    if not hasattr(frames, '__len__'):
-        frames = [frames]
-
-    if ax is None:
-        fig, ax = plt.subplots(1, len(frames))
-        # if frames is an array of len=1, the ax object is not a list, so for the following code we make it into a list
-        if len(frames)==1:
-            ax =[ax]
-    else:
-        fig = None
-
-
-    if not roi is None:
-        [roi_center, roi_dimension] = roi
-
-    v = pims.Video(file_path)
-    video = rgb2gray_pipeline(v)
-
-    if not gaussian_filter_width is None:
-        gaussian_filter_pipeline = pipeline(gaussian_filter)
-        video = gaussian_filter_pipeline(video, gaussian_filter_width)
-
-
-    frame_shape = np.shape(video[frames[0]])
-
-
-    for frame, axo in zip(frames, ax):
-
-        image = video[frame]
-
-
-        axo.imshow(image, cmap='pink')
-        # axo.imshow(video[frame], cmap='pink')
-        if not xy_position is None:
-
-
-
-            # note that we flip the x and y axis, because that is how
-            # axo.plot(xy_position[frame, 1], xy_position[frame, 0], 'xg', markersize = 30, linewidth = 4)
-            circ = Circle((xy_position[frame, 1], xy_position[frame, 0]), radius =radius, linewidth=2, edgecolor='g', facecolor='none')
-            axo.add_patch(circ)
-
-            # plot also the positions obtained with center-of-mass
-            if len ( xy_position[frame]) == 4:
-                circ = Circle((xy_position[frame, 3], xy_position[frame, 2]), radius=radius, linewidth=2, edgecolor='r',
-                              facecolor='none')
-                axo.add_patch(circ)
-            # plot also the positions obtained with trackpy
-            if len ( xy_position[frame]) == 6:
-                # axo.plot(xy_position[frame, 3], xy_position[frame, 2], 'xr', markersize=30, linewidth = 2)
-                # the postions in trackpy are the usual x,y order
-                circ = Circle((xy_position[frame, 5], xy_position[frame, 4]), radius=radius, linewidth=2, edgecolor='r',
-                              facecolor='none')
-                axo.add_patch(circ)
-        if xylim is None:
-            xlim = [0, frame_shape[0]]
-            ylim = [0, frame_shape[1]]
-        else:
-            xlim, ylim = xylim
-
-        axo.set_xlim(xlim)
-        axo.set_ylim(ylim)
-        # plt.show()
-
-
-        # Create a Rectangle patch to show roi
-        if not roi is None:
-            rect = Rectangle((int(roi_center[1] - roi_dimension[1] / 2)-1, int(roi_center[0] - roi_dimension[0] / 2)), roi_dimension[1], roi_dimension[0], linewidth=1, edgecolor='r', facecolor='none')
-            axo.add_patch(rect)
-
-    return fig, ax
 
 def plot_psd_vs_time(x, time_step, start_frame = 0, window_length= 1000, end_frame = None,full_spectrum=True, frequency_range= None, ax = None, plot_avrg = False, verbose = False):
     """
@@ -344,3 +248,101 @@ def plot_tracking_error(data, methods):
     plt.title('Tracking error ({:s})'.format(channel))
     plt.ylabel('Error')
     plt.legend(loc = (1,0.5))
+
+# OLD STUFF!!!!
+def plot_video_frame_old_stuff(file_path, frames, xy_position = None, gaussian_filter_width=None, xylim = None, roi = None, ax = None, radius = 3):
+    """
+
+    plots frames of the video
+
+    Args:
+        file_path: path to video file
+        frames: integer or list of integers of the frames to be plotted
+        xy_position: xy position of the magnet. If provided, this position will be plotted on top of  the image
+        gaussian_filter_width: if not None apply Gaussian filter
+        xylim: xylim to zoom in on a region, if not specified (ie None) show full image
+
+        roi: region of interest, this allows to limit the search to a region of interest with the frame, the structure is
+        roi = [roi_center, roi_dimension], where
+            roi_center = [ro, co], roi_dimension = [h, w], where
+            ro, co is the center of the roi (row, columns) and
+            w, h is the width and the height of the roi
+
+            Note that roi dimensions w, h should be odd numbers!
+
+        radius: sets the radiusof the circle that indicte the position xy
+
+    """
+
+
+    if not hasattr(frames, '__len__'):
+        frames = [frames]
+
+    if ax is None:
+        fig, ax = plt.subplots(1, len(frames))
+        # if frames is an array of len=1, the ax object is not a list, so for the following code we make it into a list
+        if len(frames)==1:
+            ax =[ax]
+    else:
+        fig = None
+
+
+    if not roi is None:
+        [roi_center, roi_dimension] = roi
+
+    v = pims.Video(file_path)
+    video = rgb2gray_pipeline(v)
+
+    if not gaussian_filter_width is None:
+        gaussian_filter_pipeline = pipeline(gaussian_filter)
+        video = gaussian_filter_pipeline(video, gaussian_filter_width)
+
+
+    frame_shape = np.shape(video[frames[0]])
+
+
+    for frame, axo in zip(frames, ax):
+
+        image = video[frame]
+
+
+        axo.imshow(image, cmap='pink')
+        # axo.imshow(video[frame], cmap='pink')
+        if not xy_position is None:
+
+
+
+            # note that we flip the x and y axis, because that is how
+            # axo.plot(xy_position[frame, 1], xy_position[frame, 0], 'xg', markersize = 30, linewidth = 4)
+            circ = Circle((xy_position[frame, 1], xy_position[frame, 0]), radius =radius, linewidth=2, edgecolor='g', facecolor='none')
+            axo.add_patch(circ)
+
+            # plot also the positions obtained with center-of-mass
+            if len ( xy_position[frame]) == 4:
+                circ = Circle((xy_position[frame, 3], xy_position[frame, 2]), radius=radius, linewidth=2, edgecolor='r',
+                              facecolor='none')
+                axo.add_patch(circ)
+            # plot also the positions obtained with trackpy
+            if len ( xy_position[frame]) == 6:
+                # axo.plot(xy_position[frame, 3], xy_position[frame, 2], 'xr', markersize=30, linewidth = 2)
+                # the postions in trackpy are the usual x,y order
+                circ = Circle((xy_position[frame, 5], xy_position[frame, 4]), radius=radius, linewidth=2, edgecolor='r',
+                              facecolor='none')
+                axo.add_patch(circ)
+        if xylim is None:
+            xlim = [0, frame_shape[0]]
+            ylim = [0, frame_shape[1]]
+        else:
+            xlim, ylim = xylim
+
+        axo.set_xlim(xlim)
+        axo.set_ylim(ylim)
+        # plt.show()
+
+
+        # Create a Rectangle patch to show roi
+        if not roi is None:
+            rect = Rectangle((int(roi_center[1] - roi_dimension[1] / 2)-1, int(roi_center[0] - roi_dimension[0] / 2)), roi_dimension[1], roi_dimension[0], linewidth=1, edgecolor='r', facecolor='none')
+            axo.add_patch(rect)
+
+    return fig, ax

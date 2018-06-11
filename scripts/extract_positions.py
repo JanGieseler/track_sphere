@@ -11,9 +11,11 @@ dataset = 'real segemented'
 dataset = 'real'
 dataset = '20180607_Sample6_bead_1'
 
+dataset = 'test'
+
 method = 'Bright px'
-# method = 'fit_blobs'
-method = 'fit_ellipse'
+method = 'fit_blobs'
+# method = 'fit_ellipse'
 
 export_video = False
 output_fps = 2
@@ -45,6 +47,7 @@ if dataset == 'test':
         method_parameters['winSize'] = (20, 20)
         method_parameters['initial_points'] = [[60, 109], [89, 66], [91, 108], [96, 142], [139, 113]]
         # method_parameters['initial_points'] = [[14, 104], [93,  57], [96, 107], [98, 140], [142,109]]
+        method_parameters['initial_points'] = None
     elif method == 'Bright px':
         pass
     elif method == 'fit_ellipse':
@@ -189,6 +192,7 @@ if dataset == '20180607_Sample6_bead_1':
     filename_in = '20180607_Sample_6_Bead_2.avi'
     # filename_in = '20180607_Sample_6_Bead_3.avi'
     filename_in = '20180608_Sample_6_Bead_4.avi'
+    filename_in = '20180608_Sample_6_Bead_5.avi'
     # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c-fixed.avi' # doesn't work!
     # folder_in = '/Volumes/Elements/lev_data/20180523_Sample_6_bead_1/'
 

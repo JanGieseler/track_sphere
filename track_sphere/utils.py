@@ -384,6 +384,32 @@ def power_spectral_density(x, time_step, frequency_range = None):
 
     return f, p
 
+def grab_frame(file_in, frame_id=0,  verbose=False):
+    """
+
+    opens video can with opencv and  returns frame
+
+    Args:
+        file_in: name of video file
+        frame_id: id of frame to be loaded
+
+    Returns:
+
+    """
+    cap = cv.VideoCapture(file_in, False)  # open input video
+
+
+    cap.set(cv.CAP_PROP_POS_FRAMES, frame_id)  # set the starting frame for reading to min frame
+    ret, frame_in = cap.read()
+
+    cap.release()
+
+    if verbose:
+        print(file_in, ':', ret)
+
+    return frame_in
+
+
 if __name__ == '__main__':
     folder_in = '../example_data/'
     filename_in = '20171207_magnet.avi'
