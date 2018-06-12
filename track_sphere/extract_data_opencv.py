@@ -146,23 +146,21 @@ def features_surf(image, parameters, features = None, return_features=False):
 
 
     # image  =  mask
+    feature_list = []
     # generate image that shows the detected features
-    if return_image:
+    if return_features:
         # bright spots on magnet
         for k in range(min([len(kp), parameters['num_features']])):
-            # print(k.angle, k.size, k.pt, (int(k.pt[0]), int(k.pt[1])))
-            cv.circle(image, (int(kp[k].pt[0]), int(kp[k].pt[1])), 5, color=100)
+            feature_list.append(Feature('point', (int(kp[k].pt[0]), int(kp[k].pt[1])), None))
+            # cv.circle(image, (int(kp[k].pt[0]), int(kp[k].pt[1])), 5, color=100)
 
         if features is not None:
             for lrc in lrcs:
-                print('fffff', lrc)
                 # top-left corner and bottom-right corner of rectangle.
-                cv.rectangle(image, (lrc[0], lrc[1]), (lrc[0]+w, lrc[1]+h), (0, 255, 0), 1)
+                feature_list.append(Feature('roi', (lrc[0], lrc[1], lrc[0]+w, lrc[1]+h, None)))
+                # cv.rectangle(image, (lrc[0], lrc[1]), (lrc[0]+w, lrc[1]+h), (0, 255, 0), 1)
 
-    else:
-        image = None
-
-    return data, image
+    return data, feature_list
 
 def moments_roi(image, parameters, points, return_features=False, verbose=False):
     """

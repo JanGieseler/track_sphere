@@ -17,12 +17,13 @@ export_video = True
 output_fps = 10
 output_images=200
 
-
+method = 'features_surf'
+process_method = None
 # ======== Settings b========
-method_parameters = {}
-method_parameters['xfeatures'] = 100
-method_parameters['HessianThreshold'] = 1000
-method_parameters['num_features'] = 5
+extraction_parameters = {'method':method}
+extraction_parameters['xfeatures'] = 100
+extraction_parameters['HessianThreshold'] = 1000
+extraction_parameters['num_features'] = 5
 folder_out = '../example_out/ex4/'
 
 # ======== run script ========
@@ -41,7 +42,18 @@ export_parameters = {
     'output_images': output_images
 }
 
+process_parameters = {'process_method': process_method}
+
+parameters = {
+    'pre-processing': process_parameters,
+    'extraction_parameters': extraction_parameters,
+    'export_parameters': export_parameters
+}
+
+
 
 extract_position_data(file_in, file_out=file_out, max_frame=1000, verbose=False,
-                      method=method, method_parameters=method_parameters, export_parameters=export_parameters)
+                      parameters=parameters)
+
+
 
