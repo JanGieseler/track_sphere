@@ -14,33 +14,39 @@ folder_in = '../example_data/'
 # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
 filename_in = '20171207_magnet.avi'
 
-export_video = True
+export_video = False
 output_fps = 10
 output_images=200
 
+case = 'a' #
+case = 'b' #
+case = 'video' #
+
 # ======== Settings a ========
-method_parameters = {}
-method_parameters['threshold'] = 100
-method_parameters['maxval'] = 255
-method_parameters['num_features'] = 5
-method_parameters['convex_hull'] = False
-folder_out = '../example_out/ex3-a/'
+if case == 'a':
 
-
+    process_parameters = {'process_method': 'adaptive_thresh_gauss'}
+    process_parameters['blockSize'] = 35
+    process_parameters['c'] = 11
+    process_parameters['maxval'] = 255
+    process_parameters['convex_hull'] = False
+    folder_out = '../example_out/ex3-a/'
 # ======== Settings b========
-method_parameters = {}
-method_parameters['threshold'] = 'gaussian'
-# method_parameters['threshold'] = 'mean'
-# method_parameters['threshold'] = 100
-method_parameters['blockSize'] = 35
-method_parameters['c'] = 11
-method_parameters['maxval'] = 255
-method_parameters['convex_hull'] = True
-folder_out = '../example_out/ex3-b/'
+if case in ['b','video']:
+
+    process_parameters = {'process_method': 'adaptive_thresh_mean'}
+    # method_parameters['threshold'] = 'mean'
+    # method_parameters['threshold'] = 100
+    process_parameters['blockSize'] = 35
+    process_parameters['c'] = 11
+    process_parameters['maxval'] = 255
+    process_parameters['convex_hull'] = True
+    folder_out = '../example_out/ex3-b/'
 
 # ======== run script ========
+if case == 'video':
+    export_video = True
 
-if export_video:
     folder_out = '../example_out/ex3-video/'
 
 filename_out = filename_in.replace('.avi', '-{:s}.avi'.format(method))
@@ -54,7 +60,18 @@ export_parameters = {
     'output_images': output_images
 }
 
+extraction_parameters = {'method': method}
+
+parameters = {
+    'pre-processing': process_parameters,
+    'extraction_parameters': extraction_parameters,
+    'export_parameters': export_parameters
+}
+
+
 
 extract_position_data(file_in, file_out=file_out, max_frame=1000, verbose=False,
-                      method=method, method_parameters=method_parameters, export_parameters=export_parameters)
+                      parameters=parameters)
+
+
 

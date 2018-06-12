@@ -292,7 +292,6 @@ def fit_blobs(image, parameters, points, return_features=False, verbose=False):
 
     return data, image
 
-
 def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     """
     fit an ellipse and tracks feature in image
@@ -385,7 +384,7 @@ def check_method_parameters(parameters, info=None, verbose=False):
 
         elif parameters['pre-processing']['process_method'] == 'grabCut':
             if 'roi' not in parameters['pre-processing']:
-                parameters['pre-processing']['roi'] = (10, 10, info['Width']-10, info['Height']-10)
+                parameters['pre-processing']['roi'] = (20, 20, info['Width']-20, info['Height']-20)
             if 'mask_width' not in parameters['pre-processing']:
                 parameters['pre-processing']['mask_width'] = info['Width']
             if 'mask_height' not in parameters['pre-processing']:
@@ -555,6 +554,8 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
 
     """
 
+
+
     if verbose:
         print('process_method', parameters['process_method'])
 
@@ -596,7 +597,7 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
             blockSize = parameters['blockSize']
             c = parameters['c']
             frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, blockSize, c)
-        elif parameters == 'adaptive_thresh_gauss':
+        elif parameters['process_method'] == 'adaptive_thresh_gauss':
             # gaussian threshold
             maxval = parameters['maxval']
             blockSize = parameters['blockSize']
@@ -717,43 +718,6 @@ def add_features_to_image(image, feature_list, verbose=False):
             # pt2 = (pt1[0]+feature[2], pt1[1]+feature[3])
             pt2 = tuple(feature.data[2:4])
             cv.rectangle(image, pt1, pt2, (255, 0, 0), 1)
-
-# def is_ellipse(feature):
-#     shape = np.shape(feature)
-#     if len(shape) != 3:
-#         return False
-#     if len(feature[0]) != 2:
-#         return False
-#     if len(feature[1]) != 2:
-#         return False
-#
-#     return True
-#
-# def is_point(feature):
-#     shape = np.shape(feature)
-#     if len(shape) != 1:
-#         return False
-#     if len(feature) != 2:
-#         return False
-#
-#     return True
-#
-# def is_contour(feature):
-#     shape = np.shape(feature)
-#     if len(shape) != 2:
-#         return False
-#     if shape[1] != 2:
-#         return False
-#     return True
-#
-#
-# def is_roi(feature):
-#     if not isinstance(feature, tuple):
-#         return False
-#     if len(feature) != 4:
-#         return False
-#     return True
-
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
                           verbose = False, parameters=None):

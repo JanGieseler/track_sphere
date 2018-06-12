@@ -7,12 +7,9 @@ from track_sphere.extract_data_opencv import *
 
 
 
+process_method = 'grabCut'
+method = 'fit_ellipse'
 
-rect = (20,20,160,160)
-method = 'grabCut'
-iterations = 5
-
-method_parameters = {'roi':rect, 'iterations':iterations}
 
 folder_in = '../example_data/'
 # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c_reencode.avi'
@@ -28,7 +25,17 @@ file_out = os.path.join(folder_out, filename_out)
 export_parameters = {
     'output_images': 200
 }
+extraction_parameters = {'method': method}
+process_parameters = {'process_method': process_method}
 
-# extract_position_data(file_in, file_out=file_out, max
+
+parameters = {
+    'pre-processing': process_parameters,
+    'extraction_parameters': extraction_parameters,
+    'export_parameters': export_parameters
+}
+
+
+
 extract_position_data(file_in, file_out=file_out, max_frame=1000, verbose=False,
-                      method=method, export_parameters=export_parameters, method_parameters=method_parameters)
+                      parameters=parameters)
