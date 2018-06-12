@@ -34,6 +34,10 @@ import matplotlib.pyplot as plt
 #     good_old = features[st == 1]
 #
 #     return good_new
+from collections import namedtuple
+
+Feature = namedtuple('Feature', 'type data color')
+
 
 def is_in_roi(pt, roi):
     """
@@ -289,7 +293,7 @@ def fit_blobs(image, parameters, points, return_features=False, verbose=False):
     return data, image
 
 
-def fit_ellipse(image, parameters, return_features=False, verbose=False):
+def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     """
     fit an ellipse and tracks feature in image
     Args:
@@ -302,31 +306,11 @@ def fit_ellipse(image, parameters, return_features=False, verbose=False):
         data, image with annotation
 
     """
-    # if we received a color image convert to gray scale
-    if len(np.shape(image)) == 3:
-        gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-    elif len(np.shape(image)) == 2:
-        gray = image
-    else:
-        raise ValueError('unexpected shape')
 
-    # ==  fit ellipse =====
+    # expect a gray scale image
+    assert len(np.shape(image_gray)) == 2
 
-    # mean threshold
-    if parameters['threshold'] == 'mean':
-        thresh = cv.adaptiveThreshold(gray, parameters['maxval'], cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, parameters['blockSize'], parameters['c'])
-    elif parameters['threshold'] == 'gaussian':
-        # gaussian threshold
-        thresh = cv.adaptiveThreshold(gray, parameters['maxval'], cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, parameters['blockSize'], parameters['c'])
-    elif isinstance(parameters['threshold'], int):
-        # global threshold
-        thresh = cv.threshold(gray, parameters['threshold'], parameters['maxval'], cv.THRESH_BINARY)[1]
-    elif parameters['threshold'] == 'canny':
-        thresh = cv.Canny(gray, threshold1=parameters['threshold_low'], threshold2=['threshold_high'])
-    elif parameters['threshold'] == 'triangle':
-        retVal, thresh = cv.threshold(gray, 0, parameters['maxval'], cv.THRESH_BINARY + cv.THRESH_TRIANGLE)
-
-    im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    im2, contours, hierarchy = cv.findContours(image_gray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     contour_magnet = max(contours, key=len)
 
@@ -357,9 +341,6 @@ def fit_ellipse(image, parameters, return_features=False, verbose=False):
         ellipse = [(None, None), (None, None), None]
 
 
-
-
-
     # contour center
     data = [cX, cY]
 
@@ -368,28 +349,17 @@ def fit_ellipse(image, parameters, return_features=False, verbose=False):
 
     # generate image that shows the detected features
     if return_features:
-        shape = np.shape(image)
-        # if the inout image is a gray color, augment dimensions so that we can plot color contours
-        if len(shape)==2:
-            shape += (3,)
-        image_out = np.zeros(shape)
+        features = [
+            Feature('contour', contour_magnet, None),
+            Feature('contour', contour_magnet_hull, None),
+            Feature('point', (int(cX), int(cY)), None)]
 
-
-
-
-        # outline of magnet contour
-        cv.drawContours(image_out, [contour_magnet], -1, (0, 255, 0), 1)
-        # outline of magnet contour hull
-        cv.drawContours(image_out, [contour_magnet_hull], -1, (255, 255, 0), 1)
-        # center of contour
-        cv.circle(image_out, (int(cX), int(cY)), 7, (0, 0, 255), -1)
         if not ellipse[2] is None:
-            # outline of ellipse
-            cv.ellipse(image_out, ellipse, (0, 0, 255), 1)
+            features += [Feature('ellipse', ellipse, None)]
     else:
-        image_out = None
+        features = []
 
-    return data, image_out
+    return data, features
 
 def check_method_parameters(parameters, info=None, verbose=False):
 
@@ -541,7 +511,7 @@ def get_data_header(method_parameters, verbose=False):
 
     return data_header
 
-def get_frame_data(frame, method_parameters, return_features=False, method_objects=None, verbose=False):
+def get_frame_data(frame, parameters, return_features=False, method_objects=None, verbose=False):
 
 
     # # if we return the image, make a deepcopy since the data stored in frame gets modified during processing
@@ -550,25 +520,27 @@ def get_frame_data(frame, method_parameters, return_features=False, method_objec
     #     frame = deepcopy(frame_in)
     # else:
     #     frame = frame_in
-    method = method_parameters['method']
+    method = parameters['method']
 
+    if verbose:
+        print('method - get_frame_data', method)
     if method == 'Bright px':
-        frame_out = frame
-        (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame_out[:, :, 0], None)
+        (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame[:, :, 0], None)
         frame_data = [maxLoc[1], maxLoc[0]]
+        features = [tuple(frame_data)]
 
     elif method == 'fit_ellipse':
-        frame_data, frame_out = fit_ellipse(frame, return_features=return_features, parameters=method_parameters)
+        frame_data, features = fit_ellipse(frame, return_features=return_features, parameters=parameters, verbose=verbose)
 
     elif method == 'features_surf':
-        frame_data, frame_out = features_surf(frame, return_features=return_features, parameters=method_parameters)
+        frame_data, features = features_surf(frame, return_features=return_features, parameters=parameters)
 
     elif method == 'fit_blobs':
         points = method_objects['points']
-        frame_data, frame_out = fit_blobs(frame, parameters=method_parameters, points=points,
-                                          return_features=return_features, verbose=verbose)
+        frame_data, features = fit_blobs(frame, parameters=parameters, points=points,
+                                         return_features=return_features, verbose=verbose)
 
-    return frame_data, frame_out
+    return frame_data, features
 
 def process_image(frame, pre_process_parameters, method_objects, verbose=False, return_features=False):
     """
@@ -586,10 +558,17 @@ def process_image(frame, pre_process_parameters, method_objects, verbose=False, 
     if verbose:
         print('process_method', pre_process_parameters['process_method'])
         print('=====adasda', np.shape(frame))
+
+    feature_list = []
+
     if pre_process_parameters['process_method'] == 'BackgroundSubtractorMOG2':
 
         fgbg = method_objects['fgbg']
         frame_out = fgbg.apply(frame)
+
+        # convert to gray scale
+        frame_out = cv.cvtColor(frame_out, cv.COLOR_BGR2GRAY)
+
 
     elif pre_process_parameters['process_method'] == 'grabCut':
         mask, bgdModel, fgdModel = method_objects['mask'], method_objects['bgdModel'], method_objects['fgdModel']
@@ -598,14 +577,53 @@ def process_image(frame, pre_process_parameters, method_objects, verbose=False, 
         mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
         frame_out = frame * mask2[:, :, np.newaxis]
 
+        if return_features:
+            # feature_list = []
+            feature_list = [Feature('roi', pre_process_parameters['roi'], None)]
+
+        # convert to gray scale
+        frame_out = cv.cvtColor(frame_out, cv.COLOR_BGR2GRAY)
+
+    elif pre_process_parameters['process_method'] in ['adaptive_thresh_mean', 'adaptive_thresh_gauss', 'threshold', 'thresh_canny', 'thresh_triangle']:
+        # if we received a color image convert to gray scale
+        if len(np.shape(frame)) == 3:
+            gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        elif len(np.shape(frame)) == 2:
+            gray = frame
+        else:
+            raise ValueError('unexpected shape')
+
+
+        # mean threshold
+        if pre_process_parameters['process_method'] == 'adaptive_thresh_mean':
+            maxval = pre_process_parameters['maxval']
+            blockSize = pre_process_parameters['blockSize']
+            c = pre_process_parameters['c']
+            frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, blockSize, c)
+        elif pre_process_parameters == 'adaptive_thresh_gauss':
+            # gaussian threshold
+            maxval = pre_process_parameters['maxval']
+            blockSize = pre_process_parameters['blockSize']
+            c = pre_process_parameters['c']
+            frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, blockSize, c)
+        elif pre_process_parameters['process_method'] == 'threshold':
+            # global threshold
+            maxval = pre_process_parameters['maxval']
+            threshold = pre_process_parameters['threshold']
+            frame_out = cv.threshold(gray, threshold, maxval, cv.THRESH_BINARY)[1]
+        elif pre_process_parameters['process_method'] == 'thresh_canny':
+            threshold_low = pre_process_parameters['threshold_low']
+            threshold_high = pre_process_parameters['threshold_high']
+            frame_out = cv.Canny(gray, threshold1=threshold_low, threshold2=threshold_high)
+        elif pre_process_parameters['process_method'] == 'thresh_triangle':
+            maxval = pre_process_parameters['process_method']['maxval']
+            retVal, frame_out = cv.threshold(gray, 0, maxval, cv.THRESH_BINARY + cv.THRESH_TRIANGLE)
+
+
     if verbose:
         print('cecksum frame_in', np.sum(frame))
         print('cecksum frame_out', np.sum(frame_out))
 
-    if return_features:
-        feature_list = [pre_process_parameters['roi']]
-    else:
-        feature_list = None
     return frame_out, feature_list
 
 def get_method_objects(parameters):
@@ -673,63 +691,67 @@ def update_method_objects(method, method_parameters, method_objects, frame_data)
     return method_objects
 
 
-def add_features_to_image(image, feature_list, feature_colors=None):
+def add_features_to_image(image, feature_list, verbose=False):
 
-    if feature_colors is not None:
-        assert len(feature_list) == len(feature_colors)
 
     for feature in feature_list:
-        if is_contour(feature):
+        if feature.type == 'contour':
             # outline of contour
-            cv.drawContours(image, [feature], -1, (0, 255, 0), 1)
-        elif is_point(feature):
-            # outline of contour
-            cv.circle(image, (int(feature[0]), int(feature[1])), 3, (0, 0, 255), -1)
-        elif is_ellipse(feature):
-            # outline of ellipse
-            cv.ellipse(image, feature, (0, 0, 255), 1)
-        elif is_roi(feature):
-            pt1 = tuple(feature[0:2])
+            if verbose:
+                print('adding contour')
+            color = feature.color if feature.color is not None else (0, 255, 0)
+            cv.drawContours(image, [feature.data], -1, color, 1)
+        elif feature.type == 'point':
+            if verbose:
+                print('adding point')
+            cv.circle(image, (int(feature.data[0]), int(feature.data[1])), 3, (0, 0, 255), -1)
+        elif feature.type == 'ellipse':
+            if verbose:
+                print('adding ellipse')
+            cv.ellipse(image, feature.data, (0, 0, 255), 1)
+        elif feature.type == 'roi':
+            if verbose:
+                print('adding roi')
+            pt1 = tuple(feature.data[0:2])
             # pt2 = (pt1[0]+feature[2], pt1[1]+feature[3])
-            pt2 = tuple(feature[2:4])
-
+            pt2 = tuple(feature.data[2:4])
             cv.rectangle(image, pt1, pt2, (255, 0, 0), 1)
 
-def is_ellipse(feature):
-    shape = np.shape(feature)
-    if len(shape) != 3:
-        return False
-    if len(feature[0]) != 2:
-        return False
-    if len(feature[1]) != 2:
-        return False
-
-    return True
-
-def is_point(feature):
-    shape = np.shape(feature)
-    if len(shape) != 1:
-        return False
-    if len(feature) != 2:
-        return False
-
-    return True
-
-def is_contour(feature):
-    shape = np.shape(feature)
-    if len(shape) != 2:
-        return False
-    if shape[1] != 2:
-        return False
-    return True
-
-
-def is_roi(feature):
-    if not isinstance(feature, tuple):
-        return False
-    if len(feature) != 4:
-        return False
-    return True
+# def is_ellipse(feature):
+#     shape = np.shape(feature)
+#     if len(shape) != 3:
+#         return False
+#     if len(feature[0]) != 2:
+#         return False
+#     if len(feature[1]) != 2:
+#         return False
+#
+#     return True
+#
+# def is_point(feature):
+#     shape = np.shape(feature)
+#     if len(shape) != 1:
+#         return False
+#     if len(feature) != 2:
+#         return False
+#
+#     return True
+#
+# def is_contour(feature):
+#     shape = np.shape(feature)
+#     if len(shape) != 2:
+#         return False
+#     if shape[1] != 2:
+#         return False
+#     return True
+#
+#
+# def is_roi(feature):
+#     if not isinstance(feature, tuple):
+#         return False
+#     if len(feature) != 4:
+#         return False
+#     return True
 
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,

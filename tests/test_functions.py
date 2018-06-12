@@ -92,26 +92,26 @@ if __name__ == '__main__':
     print('asa', parameters)
     method_objects = get_method_objects(parameters)
 
-    frame_out = process_image(frame_in, pre_process_parameters=processing_parameters, method_objects=method_objects,
-                              verbose=True)
+    frame_out, feature_list = process_image(frame_in, pre_process_parameters=processing_parameters, method_objects=method_objects,
+                              verbose=True, return_features=True)
 
-    frame_out2 = deepcopy(frame_out)
-    # add roi to feature list
-    feature_list = [processing_parameters['roi']]
+    frame_out_pre = deepcopy(frame_out)
+    #convert to color
+    frame_out_pre = cv.cvtColor(frame_out_pre, cv.COLOR_GRAY2BGR)
+    add_features_to_image(frame_out_pre, feature_list, verbose=True)
+
+    print('===========>> extract')
+    data, fl = get_frame_data(frame_out, parameters=extraction_parameters, return_features=True, method_objects=None, verbose=True)
+    feature_list += fl
+    frame_out = cv.cvtColor(frame_out, cv.COLOR_GRAY2BGR)
+    add_features_to_image(frame_out, feature_list, verbose=True)
+    print('pppppp', len(feature_list))
+    # print('pppppp', feature_list)
 
 
 
 
-    add_features_to_image(frame_out2, feature_list, feature_colors=None)
-    # mask, bgdModel, fgdModel = method_objects['mask'], method_objects['bgdModel'], method_objects['fgdModel']
-    # cv.grabCut(frame_in, mask, method_parameters['roi'], bgdModel, fgdModel, method_parameters['iterations'],
-    #            cv.GC_INIT_WITH_RECT)
-    # mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
-    # frame_out = frame_in * mask2[:, :, np.newaxis]
-
-    # cv.imshow("original", frame_in)
-    # cv.imshow("out", frame_out)
-    cv.imshow("out", np.hstack([frame_in, frame_out, frame_out2]))
+    cv.imshow("out", np.hstack([frame_in, frame_out_pre, frame_out]))
 
     # print(type(frame_in))
     # print('asadsda', np.shape(frame_in))
