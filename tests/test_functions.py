@@ -4,8 +4,10 @@ from track_sphere.utils import grab_frame
 import cv2 as cv
 import os
 import numpy as np
-
+from copy import deepcopy
 import matplotlib.pyplot as plt
+
+from track_sphere.extract_data_opencv import check_method_parameters, load_video_info, get_frame_data, get_method_objects, process_image, add_features_to_image
 
 
 class TestFitFunctions(unittest.TestCase):
@@ -46,54 +48,138 @@ class TestFitFunctions(unittest.TestCase):
         input('any key to exit')
 
 if __name__ == '__main__':
-    unittest.main()
+    # unittest.main()
+    import os
+    import cv2 as cv
+
+    folder_in = '../example_data/'
+    filename_in = '20171207_magnet.avi'
+
+    # ======== Settings ========
+    folder_in = '../raw_data/20180607_Sample6_bead_1/'
+    filename_in = '20180611_Sample_6_Bead_7.avi'
+
+    frame_id = 9000
+
+
+    # method = 'fit_ellipse_with_bgs'
+    parameters = {
+        'pre-processing': {'process_method': 'grabCut'},
+        'extraction_parameters': {'method': 'fit_ellipse'}
+    }
+    # parameters['pre-processing']['roi'] = (20, 20, 160, 160)
+    # parameters['pre-processing']['roi'] = (20, 20, 200, 200)
+    # parameters['pre-processing']['roi'] = (10, 10, 230, 230)
+
+    file_in = os.path.join(folder_in, filename_in)
+
+    frame_in = grab_frame(file_in, verbose=True, frame_id=frame_id)
+
+
+    info = load_video_info(file_in)
+
+    parameters = check_method_parameters(parameters, info, verbose=True)
+
+    processing_parameters = parameters['pre-processing']
+    extraction_parameters = parameters['extraction_parameters']
+    # # get headers for the data
+    # data_header = get_data_header(extraction_parameters)
+    # create method dependent objects
+    method_objects = get_method_objects(parameters)
 
 
 
-# ## TEST moments_roi
-# folder_in = '../example_data/'
-# filename_in = '20171207_magnet.avi'
-#
-# file_in = os.path.join(folder_in, filename_in)
-#
-# image = grab_frame(file_in, 0)
-#
-# method_parameters = {}
-# method_parameters['winSize'] = (16, 16)
-# method_parameters['initial_points'] = [[35, 60], [56, 60], [57, 82], [55, 35], [80, 60]]
-#
-# x, image = moments_roi(image, parameters= method_parameters, points= method_parameters['initial_points'], return_image=True, verbose=False)
-#
-#
-# print(x)
-#
-# plt.imshow(image); plt.show()
-#
-# input('any key to exit')
+    print('asa', parameters)
+    method_objects = get_method_objects(parameters)
+
+    frame_out = process_image(frame_in, pre_process_parameters=processing_parameters, method_objects=method_objects,
+                              verbose=True)
+
+    frame_out2 = deepcopy(frame_out)
+    # add roi to feature list
+    feature_list = [processing_parameters['roi']]
 
 
 
-#
-# ## TEST moments_roi
-# folder_in = '../example_data/'
-# filename_in = '20171207_magnet.avi'
-#
-# file_in = os.path.join(folder_in, filename_in)
-#
-# image = grab_frame(file_in, 0)
-#
-# method_parameters = {}
-# method_parameters['winSize'] = (16, 16)
-# method_parameters['initial_points'] = [[35, 60], [56, 60], [57, 82], [55, 35], [80, 60]]
-#
-# x, image = moments_roi(image, parameters= method_parameters, points= method_parameters['initial_points'], return_image=True, verbose=False)
-#
-#
-# print(x)
-#
-# plt.imshow(image); plt.show()
-#
-# input('any key to exit')
+
+    add_features_to_image(frame_out2, feature_list, feature_colors=None)
+    # mask, bgdModel, fgdModel = method_objects['mask'], method_objects['bgdModel'], method_objects['fgdModel']
+    # cv.grabCut(frame_in, mask, method_parameters['roi'], bgdModel, fgdModel, method_parameters['iterations'],
+    #            cv.GC_INIT_WITH_RECT)
+    # mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
+    # frame_out = frame_in * mask2[:, :, np.newaxis]
+
+    # cv.imshow("original", frame_in)
+    # cv.imshow("out", frame_out)
+    cv.imshow("out", np.hstack([frame_in, frame_out, frame_out2]))
+
+    # print(type(frame_in))
+    # print('asadsda', np.shape(frame_in))
+    # frame_data, frame_out = get_frame_data(frame_in, method, method_parameters=method_parameters, verbose=True,
+    #                                        method_objects=method_objects, return_image=True)
+    #
+    # print('asadsda', np.shape(frame_in), np.min(frame_in),np.max(frame_in))
+    # print('asadsda', np.shape(frame_out))
+    # print(method_parameters)
+    #
+    # #
+    # # show the images
+    # cv.imshow("original", frame_in)
+    #
+    # print(np.shape(frame_in))
+    # print(np.shape(frame_out))
+    #
+    # cv.imshow("Edges", np.hstack([frame_out+frame_in]))
+    # # cv.imshow("Edges", np.hstack([frame_in]))
+    cv.waitKey(0)
+    #
 
 
 
+
+
+        #
+        #
+        #
+        #
+        #
+        #
+        # gray = cv.cvtColor(frame_in, cv.COLOR_BGR2GRAY)
+        #
+        #
+        # # plt.hist(frame_in.flatten(), bins=25)
+        # # plt.show()
+        # # x = cv.calcHist(frame_in,channels=1, mask=None, histSize=10)
+        # # print(x)
+        # # input('hit any key to continue...')
+        #
+        # blurred = cv.GaussianBlur(gray, (3, 3), 0)
+        #
+        # wide = cv.Canny(blurred, 10, 200)
+        # tight = cv.Canny(blurred, 225, 250)
+        #
+        #
+        #
+        # # A lower value of sigma  indicates a tighter threshold, whereas a larger value of sigma  gives a wider threshold.
+        # # In general, you will not have to change this sigma  value often. Simply select a single, default sigma  value and apply it to your entire dataset of images.
+        # sigma = 0.10
+        # # compute the median of the single channel pixel intensities
+        # v = np.median(blurred)
+        #
+        # # apply automatic Canny edge detection using the computed median
+        # lower = int(max(0, (1.0 - sigma) * v))
+        # upper = int(min(255, (1.0 + sigma) * v))
+        # auto = cv.Canny(blurred, lower, upper)
+        #
+        #
+        # # show the images
+        # cv.imshow("Original", frame_in)
+        # cv.imshow("Edges", np.hstack([wide, tight, auto]))
+        # cv.waitKey(0)
+        #
+        #
+        #
+        #
+        #
+        #
+        #

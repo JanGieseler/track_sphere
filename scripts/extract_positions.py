@@ -20,11 +20,11 @@ method = 'fit_ellipse'
 export_video = False
 output_fps = 2
 # output_images = 1000
-output_images = 10000
+output_images = 100
 
 # max_frame = 610000
-# max_frame = 1000
-max_frame = None
+max_frame = 2000
+# max_frame = None
 # method_parameters = {'reencode':True}
 method_parameters = {}
 
@@ -242,5 +242,7 @@ if dataset == '20180607_Sample6_bead_1':
     # 01c fails at frame 687030
     # 01c_reencode fails at frame 613536, 610000
 
+
+    print('METHOD', method)
     extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=max_frame, verbose=False,
                           method=method, method_parameters=method_parameters, export_parameters=export_parameters)

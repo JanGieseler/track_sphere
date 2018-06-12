@@ -7,7 +7,7 @@ from scipy.ndimage import measurements
 
 from time import sleep
 import sys, json
-
+from copy import deepcopy
 from track_sphere.utils import *
 import matplotlib.pyplot as plt
 
@@ -63,7 +63,7 @@ def is_in_roi(pt, roi):
 
     return n_roi
 
-def features_surf(image, parameters, features = None, return_image=False):
+def features_surf(image, parameters, features = None, return_features=False):
     """
     finds features in image using the SURF algorithm
     Args:
@@ -126,9 +126,7 @@ def features_surf(image, parameters, features = None, return_image=False):
             #
             #     kp.append(kpo[0])
 
-    print('====>sadasdad', len(kp))
 
-    print([k.pt for k in kp])
 
     # w, h = parameters['winSize']
     # kp, des = surf.detectAndCompute(image, None)
@@ -162,7 +160,7 @@ def features_surf(image, parameters, features = None, return_image=False):
 
     return data, image
 
-def moments_roi(image, parameters, points, return_image=False, verbose=False):
+def moments_roi(image, parameters, points, return_features=False, verbose=False):
     """
 
     returns the centroid of the regions of interest that are centered around points
@@ -220,7 +218,7 @@ def moments_roi(image, parameters, points, return_image=False, verbose=False):
 
     return data, image
 
-def fit_blobs(image, parameters, points, return_image=False, verbose=False):
+def fit_blobs(image, parameters, points, return_features=False, verbose=False):
     """
     fit an ellipse and tracks feature in image
     Args:
@@ -290,12 +288,13 @@ def fit_blobs(image, parameters, points, return_image=False, verbose=False):
 
     return data, image
 
-def fit_ellipse(image, parameters, return_image=False, verbose=False):
+
+def fit_ellipse(image, parameters, return_features=False, verbose=False):
     """
     fit an ellipse and tracks feature in image
     Args:
         image: image to be analysed
-        return_image: if True returns image where showing all the features
+        return_features: if True returns  all the features so that they can be added to the image later
         parameters: dictionary containing
         threshold, maxval, blockSize, c
 
@@ -303,8 +302,13 @@ def fit_ellipse(image, parameters, return_image=False, verbose=False):
         data, image with annotation
 
     """
-
-    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    # if we received a color image convert to gray scale
+    if len(np.shape(image)) == 3:
+        gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    elif len(np.shape(image)) == 2:
+        gray = image
+    else:
+        raise ValueError('unexpected shape')
 
     # ==  fit ellipse =====
 
@@ -321,29 +325,6 @@ def fit_ellipse(image, parameters, return_image=False, verbose=False):
         thresh = cv.Canny(gray, threshold1=parameters['threshold_low'], threshold2=['threshold_high'])
     elif parameters['threshold'] == 'triangle':
         retVal, thresh = cv.threshold(gray, 0, parameters['maxval'], cv.THRESH_BINARY + cv.THRESH_TRIANGLE)
-    elif parameters['threshold'] == 'testing':
-
-        blurred = cv.GaussianBlur(gray, (3, 3), 0)
-
-        # A lower value of sigma  indicates a tighter threshold, whereas a larger value of sigma  gives a wider threshold.
-        # In general, you will not have to change this sigma  value often. Simply select a single, default sigma  value and apply it to your entire dataset of images.
-        sigma = 0.33
-        # compute the median of the single channel pixel intensities
-        v = np.median(gray)
-
-        # apply automatic Canny edge detection using the computed median
-        lower = int(max(0, (1.0 - sigma) * v))
-        upper = int(min(255, (1.0 + sigma) * v))
-        edged = cv.Canny(gray, lower, upper)
-
-        thresh = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 115, 1)
-        retVal, thresh = cv.threshold(gray, 0, parameters['maxval'], cv.THRESH_BINARY + cv.THRESH_TRIANGLE)
-
-        # show the images
-        cv2.imshow("Original", image)
-        cv2.imshow("Edges", np.hstack([wide, tight, auto]))
-        cv2.waitKey(0)
-
 
     im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
@@ -365,12 +346,17 @@ def fit_ellipse(image, parameters, return_image=False, verbose=False):
     cY = M["m01"] / M["m00"]
 
 
-
-
-    ellipse = cv.fitEllipse(contour_magnet_hull)
-
     if verbose:
-        print('area of ellipse', np.prod(ellipse[1])*np.pi/4)
+        print('contour length', len(contour_magnet_hull))
+
+    if len(contour_magnet_hull)>=5:
+        ellipse = cv.fitEllipse(contour_magnet_hull)
+        if verbose:
+            print('area of ellipse', np.prod(ellipse[1]) * np.pi / 4)
+    else:
+        ellipse = [(None, None), (None, None), None]
+
+
 
 
 
@@ -381,109 +367,138 @@ def fit_ellipse(image, parameters, return_image=False, verbose=False):
     data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
 
     # generate image that shows the detected features
-    if return_image:
+    if return_features:
+        shape = np.shape(image)
+        # if the inout image is a gray color, augment dimensions so that we can plot color contours
+        if len(shape)==2:
+            shape += (3,)
+        image_out = np.zeros(shape)
+
+
+
+
         # outline of magnet contour
-        cv.drawContours(image, [contour_magnet], -1, (0, 255, 0), 1)
+        cv.drawContours(image_out, [contour_magnet], -1, (0, 255, 0), 1)
         # outline of magnet contour hull
-        cv.drawContours(image, [contour_magnet_hull], -1, (255, 255, 0), 1)
-        # center of ellipse
-        cv.circle(image, (int(cX), int(cY)), 7, (0, 0, 255), -1)
-        # outline of ellipse
-        cv.ellipse(image, ellipse, (0, 0, 255), 1)
+        cv.drawContours(image_out, [contour_magnet_hull], -1, (255, 255, 0), 1)
+        # center of contour
+        cv.circle(image_out, (int(cX), int(cY)), 7, (0, 0, 255), -1)
+        if not ellipse[2] is None:
+            # outline of ellipse
+            cv.ellipse(image_out, ellipse, (0, 0, 255), 1)
     else:
-        image = None
+        image_out = None
 
-    return data, image
+    return data, image_out
+
+def check_method_parameters(parameters, info=None, verbose=False):
 
 
-def check_method_parameters(method, method_parameters, info=None, verbose=False):
+    assert 'extraction_parameters' in parameters
+    assert 'pre-processing' in parameters
+
+    method = parameters['extraction_parameters']['method']
+    if verbose:
+        print('check_method_parameters: ', method)
+
+
+
+    ################################################################################
+    #### pre-processing dependent settings
+    ################################################################################
+    if 'process_method' in parameters['pre-processing']:
+        if parameters['pre-processing']['process_method'] == 'BackgroundSubtractorMOG2':
+            if 'detectShadows' not in parameters['pre-processing']:
+                parameters['pre-processing']['detectShadows'] = False
+            if 'history' not in parameters['pre-processing']:
+                parameters['pre-processing']['history'] = 5000
+
+        elif parameters['pre-processing']['process_method'] == 'grabCut':
+            if 'roi' not in parameters['pre-processing']:
+                parameters['pre-processing']['roi'] = (10, 10, info['Width']-10, info['Height']-10)
+            if 'mask_width' not in parameters['pre-processing']:
+                parameters['pre-processing']['mask_width'] = info['Width']
+            if 'mask_height' not in parameters['pre-processing']:
+                parameters['pre-processing']['mask_height'] = info['Height']
+            if 'iterations' not in parameters['pre-processing']:
+                parameters['pre-processing']['iterations'] = 5
+    else:
+        parameters['pre-processing']['process_method'] = None
+
+
     ################################################################################
     #### method dependent settings
     ################################################################################
-
-    if method == 'BackgroundSubtractorMOG2':
-        pass
-    elif method == 'grabCut':
-
-        assert 'roi' in method_parameters
-        assert 'iterations' in method_parameters
-
-    elif method == 'fit_ellipse':
-
-        # check and update the method_parameters dictionary
-        if method_parameters is None:
-            method_parameters = {}
-        if 'threshold' not in method_parameters:
+    if method == 'fit_ellipse':
+        if 'threshold' not in parameters['extraction_parameters']:
             # method_parameters['threshold'] = 100
-            method_parameters['threshold'] = 'gaussian'
-        if 'maxval' not in method_parameters:
-            method_parameters['maxval'] = 255
+            parameters['extraction_parameters']['threshold'] = 'gaussian'
+        if 'maxval' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['maxval'] = 255
 
-        if 'convex_hull' not in method_parameters:
-            method_parameters['convex_hull'] = True
-        if method_parameters['threshold'] in ('mean', 'gaussian'):
+        if 'convex_hull' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['convex_hull'] = True
+        if parameters['extraction_parameters']['threshold'] in ('mean', 'gaussian'):
             # Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
-            if 'blockSize' not in method_parameters:
-                method_parameters['blockSize'] = 21
+            if 'blockSize' not in parameters['extraction_parameters']:
+                parameters['extraction_parameters']['blockSize'] = 21
             # Constant subtracted from the mean or weighted mean (see the details below). Normally, it is positive but may be zero or negative as well.
-            if 'c' not in method_parameters:
-                method_parameters['c'] = 2
+            if 'c' not in parameters['extraction_parameters']:
+                parameters['extraction_parameters']['c'] = 2
 
     elif method == 'features_surf':
-        if method_parameters is None:
-            method_parameters = {}
-        if 'xfeatures' not in method_parameters:
-            method_parameters['xfeatures'] = 100
-        if 'HessianThreshold' not in method_parameters:
-            method_parameters['HessianThreshold'] = 1000
-        if 'num_features' not in method_parameters:
-            method_parameters['num_features'] = 5
-
-    elif method == 'optical_flow':
-        method_parameters['num_features'] = 5
+        if parameters['extraction_parameters'] is None:
+            parameters = {}
+        if 'xfeatures' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['xfeatures'] = 100
+        if 'HessianThreshold' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['HessianThreshold'] = 1000
+        if 'num_features' not in parameters:
+            parameters['extraction_parameters']['num_features'] = 5
 
     elif method == 'fit_blobs':
-        if 'maxval' not in method_parameters:
-            method_parameters['maxval'] = 255
-        if 'convex_hull' not in method_parameters:
-            method_parameters['convex_hull'] = False
+        if 'maxval' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['maxval'] = 255
+        if 'convex_hull' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['convex_hull'] = False
 
         # take the center of the image as default
-        if 'initial_points' not in method_parameters:
-            method_parameters['initial_points'] = [[int(0.5*info['Width']), int(0.5*info['Height'])]]
-        if 'winSize' not in method_parameters:
-            method_parameters['winSize'] = (20,20)
+        if 'initial_points' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['initial_points'] = [[int(0.5 * info['Width']), int(0.5 * info['Height'])]]
+        if 'winSize' not in parameters:
+            parameters['extraction_parameters']['winSize'] = (20, 20)
 
-        method_parameters['num_features'] = len(method_parameters['initial_points'])
+            parameters['extraction_parameters']['num_features'] = len(parameters['initial_points'])
 
-        assert len(np.shape(method_parameters['initial_points'])) == 2
-        assert len(method_parameters['initial_points'][0]) == 2
+        assert len(np.shape(parameters['extraction_parameters']['initial_points'])) == 2
+        assert len(parameters['extraction_parameters']['initial_points'][0]) == 2
 
 
     elif method == 'Bright px':
         pass
     elif method == 'optical_flow':
         # check and update the method_parameters dictionary
-        if method_parameters is None:
-            method_parameters = {}
-        if 'winSize' not in method_parameters:
-            method_parameters['winSize'] = (15, 15)
-        if 'maxLevel' not in method_parameters:
-            method_parameters['maxLevel'] = 2
-        if 'criteria' not in method_parameters:
-            method_parameters['criteria'] = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
+        if parameters['extraction_parameters'] is None:
+            parameters['extraction_parameters'] = {}
+        if 'winSize' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['winSize'] = (15, 15)
+        if 'maxLevel' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['maxLevel'] = 2
+        if 'criteria' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['criteria'] = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
     else:
-        print('unknown method. Abort')
+        print('unknown method. Abort', method)
         return None
     if verbose:
         print('===> check method parameters')
 
+    return parameters
 
-def get_data_header(method, method_parameters, verbose=False):
+def get_data_header(method_parameters, verbose=False):
     ################################################################################
     #### method dependent settings
     ################################################################################
-
+    method = method_parameters['method']
     if method == 'BackgroundSubtractorMOG2':
         # the names of the data we will extract
         data_header = ['com x', 'com y', 'mean']
@@ -526,8 +541,199 @@ def get_data_header(method, method_parameters, verbose=False):
 
     return data_header
 
+def get_frame_data(frame, method_parameters, return_features=False, method_objects=None, verbose=False):
+
+
+    # # if we return the image, make a deepcopy since the data stored in frame gets modified during processing
+    # # the deepcopy makes sure that the data in frame_in remains untouched
+    # if return_image:
+    #     frame = deepcopy(frame_in)
+    # else:
+    #     frame = frame_in
+    method = method_parameters['method']
+
+    if method == 'Bright px':
+        frame_out = frame
+        (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame_out[:, :, 0], None)
+        frame_data = [maxLoc[1], maxLoc[0]]
+
+    elif method == 'fit_ellipse':
+        frame_data, frame_out = fit_ellipse(frame, return_features=return_features, parameters=method_parameters)
+
+    elif method == 'features_surf':
+        frame_data, frame_out = features_surf(frame, return_features=return_features, parameters=method_parameters)
+
+    elif method == 'fit_blobs':
+        points = method_objects['points']
+        frame_data, frame_out = fit_blobs(frame, parameters=method_parameters, points=points,
+                                          return_features=return_features, verbose=verbose)
+
+    return frame_data, frame_out
+
+def process_image(frame, pre_process_parameters, method_objects, verbose=False, return_features=False):
+    """
+    proccesses the frame, e.g. substract background, thresholding
+
+    Args:
+        frame:
+        pre_process_parameters:
+        method_objects:
+
+    Returns:
+
+    """
+
+    if verbose:
+        print('process_method', pre_process_parameters['process_method'])
+        print('=====adasda', np.shape(frame))
+    if pre_process_parameters['process_method'] == 'BackgroundSubtractorMOG2':
+
+        fgbg = method_objects['fgbg']
+        frame_out = fgbg.apply(frame)
+
+    elif pre_process_parameters['process_method'] == 'grabCut':
+        mask, bgdModel, fgdModel = method_objects['mask'], method_objects['bgdModel'], method_objects['fgdModel']
+        cv.grabCut(frame, mask, pre_process_parameters['roi'], bgdModel, fgdModel, pre_process_parameters['iterations'],
+                   cv.GC_INIT_WITH_RECT) #+cv.GC_INIT_WITH_MASK
+        mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
+        frame_out = frame * mask2[:, :, np.newaxis]
+
+    if verbose:
+        print('cecksum frame_in', np.sum(frame))
+        print('cecksum frame_out', np.sum(frame_out))
+
+    if return_features:
+        feature_list = [pre_process_parameters['roi']]
+    else:
+        feature_list = None
+    return frame_out, feature_list
+
+def get_method_objects(parameters):
+    """
+    returns the objets specific to a method
+    Args:
+        method:
+        method_parameters:
+        info:
+
+    Returns:
+
+    """
+    pre_process_parameters = parameters['pre-processing']
+    pre_process_method = pre_process_parameters['process_method']
+
+    method_parameters = parameters['extraction_parameters']
+    method = method_parameters['method']
+
+    method_objects = {}
+
+    ### objects for the preprocessing
+    if pre_process_method == 'BackgroundSubtractorMOG2':
+        # fgbg = cv.createBackgroundSubtractorMOG2(detectShadows=False, history=5000) # create background substractor
+        fgbg = cv.createBackgroundSubtractorMOG2(detectShadows=pre_process_parameters['detectShadows'], history=pre_process_parameters['history'])  # create background subtractor
+
+        method_objects['fgbg'] = fgbg
+    elif pre_process_method == 'grabCut':
+
+
+        mask = np.zeros((pre_process_parameters['mask_width'], pre_process_parameters['mask_height']), np.uint8)
+        # Temporary array for the background/foreground model.
+        # Not much info in the doc, e.g. don't know what a good length is.
+        # For now just using the length from the tutorial (65)
+        bgdModel = np.zeros((1, 65), np.float64)
+        fgdModel = np.zeros((1, 65), np.float64)
+
+
+        method_objects.update({'mask': mask, 'bgdModel': bgdModel, 'fgdModel': fgdModel})
+
+    ### objects for the interations
+    if method == 'fit_blobs':
+        points = method_parameters['initial_points']
+        method_objects['points'] = points
+
+
+    return method_objects
+
+def update_method_objects(method, method_parameters, method_objects, frame_data):
+    """
+    updates the method objects based on the frame_data from the previous frame
+    Args:
+        method:
+        method_parameters:
+        method_objects:
+        frame_data:
+
+    Returns:
+
+    """
+    if method == 'fit_blobs':
+        # retrieve the points for the next iteration
+        method_objects = points_from_blobs(frame_data, num_blobs=method_parameters['num_features'])
+
+    return method_objects
+
+
+def add_features_to_image(image, feature_list, feature_colors=None):
+
+    if feature_colors is not None:
+        assert len(feature_list) == len(feature_colors)
+
+    for feature in feature_list:
+        if is_contour(feature):
+            # outline of contour
+            cv.drawContours(image, [feature], -1, (0, 255, 0), 1)
+        elif is_point(feature):
+            # outline of contour
+            cv.circle(image, (int(feature[0]), int(feature[1])), 3, (0, 0, 255), -1)
+        elif is_ellipse(feature):
+            # outline of ellipse
+            cv.ellipse(image, feature, (0, 0, 255), 1)
+        elif is_roi(feature):
+            pt1 = tuple(feature[0:2])
+            # pt2 = (pt1[0]+feature[2], pt1[1]+feature[3])
+            pt2 = tuple(feature[2:4])
+
+            cv.rectangle(image, pt1, pt2, (255, 0, 0), 1)
+
+def is_ellipse(feature):
+    shape = np.shape(feature)
+    if len(shape) != 3:
+        return False
+    if len(feature[0]) != 2:
+        return False
+    if len(feature[1]) != 2:
+        return False
+
+    return True
+
+def is_point(feature):
+    shape = np.shape(feature)
+    if len(shape) != 1:
+        return False
+    if len(feature) != 2:
+        return False
+
+    return True
+
+def is_contour(feature):
+    shape = np.shape(feature)
+    if len(shape) != 2:
+        return False
+    if shape[1] != 2:
+        return False
+    return True
+
+
+def is_roi(feature):
+    if not isinstance(feature, tuple):
+        return False
+    if len(feature) != 4:
+        return False
+    return True
+
+
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
-                          verbose = False, method='', method_parameters = None, export_parameters = {}):
+                          verbose = False, parameters=None):
     """
     Takes a video file and outputs a new file where the background is substracted
     Args:
@@ -558,10 +764,22 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     """
 
 
+    assert 'method' in parameters
 
-    if 'segmented' in method_parameters:
+    method = parameters['method']
+
+    if not 'export_parameters' in parameters:
+        parameters['export_parameters'] = {}
+
+    export_parameters = parameters['export_parameters']
+
+    ################################################################################
+    #### optional preprocessing steps that don't seem to be necessary, like reencoding with ffmepg and splitting the file into many small files
+    ################################################################################
+
+    if 'segmented' in parameters:
         #../raw_data/20180529_Sample6_bead_1_direct_thermal_01c-segmented/20180529_Sample6_bead_1_direct_thermal_01c-98.json
-        segmented = method_parameters['segmented']
+        segmented = parameters['segmented']
         # if the file has been segmented we actually take the video info from the original file
         file_in_info = os.path.join(os.path.dirname(os.path.dirname(file_in)), os.path.basename(os.path.dirname(file_in)).replace('-segmented', '.avi'))
     else:
@@ -569,9 +787,9 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         file_in_info = file_in
 
 
-    if 'reencode' in method_parameters:
+    if 'reencode' in parameters:
         #../raw_data/20180529_Sample6_bead_1_direct_thermal_01c-segmented/20180529_Sample6_bead_1_direct_thermal_01c-98.json
-        segmented = method_parameters['reencode']
+        segmented = parameters['reencode']
         # if the file has been segmented we actually take the video info from the original file
         file_in_info = file_in
         file_in = file_in.replace('.avi', '-reencode.avi')
@@ -606,7 +824,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
     if export_video:
         if os.path.exists(file_out):
-            res = input('output file exists. Continuye operation (y/n)')
+            res = input('output file exists. Continue operation (y/n)')
             if not res == 'y':
                 print('User stopped script')
                 return None
@@ -674,28 +892,19 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     if verbose:
         print('===> set input output streams')
 
-    # check the method parameters
-    method_parameters = check_method_parameters(method, method_parameters, info)
+    ################################################################################
+    #### check and setup parameters and create auxiliary objects
+    ################################################################################
+
+    # check the parameters
+    parameters = check_method_parameters(parameters, info)
+
+    processing_parameters = parameters['pre-processing']
+    extraction_parameters = parameters['extraction_parameters']
     # get headers for the data
-    data_header = get_data_header(method, method_parameters)
-
-    ################################################################################
-    #### crete method dependent objects
-    ################################################################################
-
-    if method == 'BackgroundSubtractorMOG2':
-        # fgbg = cv.createBackgroundSubtractorMOG2(detectShadows=False, history=5000) # create background substractor
-        fgbg = cv.createBackgroundSubtractorMOG2()  # create background subtractor
-    elif method == 'grabCut':
-        mask = np.zeros((info['Width'], info['Height']), np.uint8)
-        # Temporary array for the background/foreground model.
-        # Not much info in the doc, e.g. don't know what a good length is.
-        # For now just using the length from the tutorial (65)
-        bgdModel = np.zeros((1, 65), np.float64)
-        fgdModel = np.zeros((1, 65), np.float64)
-    elif method == 'fit_blobs':
-        points = method_parameters['initial_points']
-
+    data_header = get_data_header(extraction_parameters)
+    # create method dependent objects
+    method_objects = get_method_objects(parameters)
 
     ################################################################################
     #### start processing
@@ -712,7 +921,8 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
     sys.stdout.flush()
     for frame_idx in tqdm(range(min_frame, max_frame)):
-        frame_data = [] # this leads keeps the data per frame
+        if return_image_features:
+            feature_list = [] # this keeps feature_list
 
         if verbose:
             print('frame id: ', frame_idx)
@@ -723,54 +933,48 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             ret = False
         if ret:
 
-            return_image = export_video or (output_images > 0 and frame_idx % output_images == 0)
+            # decide whether or not to return return_image_features
+            return_image_features = export_video or (output_images > 0 and frame_idx % output_images == 0)
 
-            if method == 'BackgroundSubtractorMOG2':
-                frame_out = fgbg.apply(frame_in)
+            # preprocess image, e.g. thresholding, background subtraction
+            frame_in_processed, fl = process_image(frame_in,
+                                                   parameters=processing_parameters,
+                                                   method_objects=method_objects,
+                                                   return_features=return_image_features
+                                                   )
+            if return_image_features:
+                feature_list += fl
+            # extract the parameters from the preprocessed image
+            frame_data, fl = get_frame_data(frame_in_processed,
+                                            parameters=extraction_parameters,
+                                            verbose=verbose,
+                                            method_objects=method_objects,
+                                            return_features=return_image_features)
+            if return_image_features:
+                feature_list += fl
 
-                center_of_mass = measurements.center_of_mass(frame_out)
-                frame_data = [center_of_mass[0], center_of_mass[1]]
-                frame_data += [np.mean(frame_out)]
+            # update objects that change from one iteration to the next, e.g. center points of rois
+            method_objects = update_method_objects(parameters, method_objects, frame_data)
 
-            elif method == 'grabCut':
-                cv.grabCut(frame_in, mask, method_parameters['roi'], bgdModel, fgdModel, method_parameters['iterations'], cv.GC_INIT_WITH_RECT)
-                mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
-                frame_out = frame_in * mask2[:,:,np.newaxis]
-
-                center_of_mass = measurements.center_of_mass(frame_out)
-                frame_data = [center_of_mass[0], center_of_mass[1]]
-                frame_data += [np.mean(frame_out)]
-
-            elif method == 'Bright px':
-                frame_out = frame_in
-                (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame_out[:,:,0], None)
-                frame_data = [maxLoc[1], maxLoc[0]]
-
-            elif method == 'fit_ellipse':
-                frame_data, frame_out = fit_ellipse(frame_in, return_image=return_image, parameters=method_parameters)
-
-            elif method == 'features_surf':
-                frame_data, frame_out = features_surf(frame_in, return_image=return_image, parameters=method_parameters)
-
-            elif method == 'fit_blobs':
-                frame_data, frame_out = fit_blobs(frame_in, parameters=method_parameters, points=points, return_image=return_image,verbose=verbose)
-                # retrieve the points for the next iteration
-                points = points_from_blobs(frame_data, num_blobs=method_parameters['num_features'])
-
-            # show output
-            # cv.imshow('frame', frame_out)
+            # add features to image
+            if return_image_features:
+                frame_out = add_features_to_image(frame_in, image_features)
 
             if export_video:
                 if buffer_time>0:
                     sleep(buffer_time)
+
                 video_writer.write(frame_out)
-            # if frame_idx == 1:
-            #     break
+
         else:
             skipped_frames.append(frame_idx)
             continue # go to next iteration
 
         if output_images>0 and frame_idx%output_images==0:
+            # combine original image and the contours
+            frame_out = 0.5*frame_in+ 0.5*frame_out
+            # frame_out = cv.addWeighted(frame_in, 0.5, frame_out, 0.5, 0.0)
+
             cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))), frame_out)
             # cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}_initit.jpg'.format(frame_idx))), frame_in)
 
@@ -798,13 +1002,12 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
     df = pd.DataFrame.from_dict(data_dict)
 
-
     df.to_csv(file_out.replace('.avi','.dat'))
 
     #print meta data to json
     info_dict = {'info': info, 'method': method, 'skipped_frames': skipped_frames, 'export_parameters': export_parameters}
-    if not method_parameters is None:
-        info_dict['method_parameters'] = method_parameters
+    if not parameters is None:
+        info_dict['method_parameters'] = parameters
     with open(file_out.replace('.avi','.json'), 'w') as outfile:
         tmp = json.dump(info_dict, outfile, indent=4)
 
