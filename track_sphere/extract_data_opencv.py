@@ -237,7 +237,7 @@ def fit_blobs(image, parameters, points, return_features=False, verbose=False):
 
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     data = []  # store the data
-    plot_additions = []  # store the information to add the roi, ellipses to the image
+    features_list = []  # store the information to add the roi, ellipses to the image
     w, h = parameters['winSize']
 
     for i, pt in enumerate(points):
@@ -269,26 +269,31 @@ def fit_blobs(image, parameters, points, return_features=False, verbose=False):
         data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
 
         # save values for plotting
-        if return_image:
-            plot_additions.append([contour_magnet, ellipse, (c, r)])
+        if return_features:
+            features_list += [
+                Feature('contour', contour_magnet, None),
+                Feature('ellipse', ellipse, None),
+                Feature('point', (c, r), None)]
+
+            # plot_additions.append([contour_magnet, ellipse, (c, r)])
 
 
-    # generate image that shows the detected features
-    if return_image:
+    # # generate image that shows the detected features
+    # if return_image:
+    #
+    #     for i, (contour_magnet, ellipse, (c, r)) in enumerate(plot_additions):
+    #         # outline of magnet contour
+    #         cv.drawContours(image, [contour_magnet], -1, (0, 255, 0), 1)
+    #         # initial point
+    #         cv.circle(image, (c+int(0.5*w), r+int(0.5*h)), 2, (0, 0, 255), -1)
+    #         # roi
+    #         cv.rectangle(image, (c, r), (c+w, r+h), (255, 0, 0), 1)
+    #         # outline of ellipse
+    #         cv.ellipse(image, ellipse, (0, 0, 255), 1)
+    # else:
+    #     image = None
 
-        for i, (contour_magnet, ellipse, (c, r)) in enumerate(plot_additions):
-            # outline of magnet contour
-            cv.drawContours(image, [contour_magnet], -1, (0, 255, 0), 1)
-            # initial point
-            cv.circle(image, (c+int(0.5*w), r+int(0.5*h)), 2, (0, 0, 255), -1)
-            # roi
-            cv.rectangle(image, (c, r), (c+w, r+h), (255, 0, 0), 1)
-            # outline of ellipse
-            cv.ellipse(image, ellipse, (0, 0, 255), 1)
-    else:
-        image = None
-
-    return data, image
+    return data, features_list
 
 def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     """
@@ -429,13 +434,13 @@ def check_method_parameters(parameters, info=None, verbose=False):
         if 'convex_hull' not in parameters['extraction_parameters']:
             parameters['extraction_parameters']['convex_hull'] = False
 
+
         # take the center of the image as default
         if 'initial_points' not in parameters['extraction_parameters']:
             parameters['extraction_parameters']['initial_points'] = [[int(0.5 * info['Width']), int(0.5 * info['Height'])]]
         if 'winSize' not in parameters:
             parameters['extraction_parameters']['winSize'] = (20, 20)
-
-            parameters['extraction_parameters']['num_features'] = len(parameters['initial_points'])
+            parameters['extraction_parameters']['num_features'] = len(parameters['extraction_parameters']['initial_points'])
 
         assert len(np.shape(parameters['extraction_parameters']['initial_points'])) == 2
         assert len(parameters['extraction_parameters']['initial_points'][0]) == 2
@@ -674,6 +679,9 @@ def get_method_objects(parameters):
 
 def update_method_objects(parameters, method_objects, frame_data):
     """
+
+    NOTE!! we might want to update method_objects instead of just overwritting
+
     updates the method objects based on the frame_data from the previous frame
     Args:
         method:
@@ -683,12 +691,14 @@ def update_method_objects(parameters, method_objects, frame_data):
 
     Returns:
 
+
+
     """
     method = parameters['extraction_parameters']['method']
     if method == 'fit_blobs':
         # retrieve the points for the next iteration
-        method_objects = points_from_blobs(frame_data, num_blobs=parameters['num_features'])
-
+        # method_objects.update({'points' : points_from_blobs(frame_data, num_blobs=parameters['extraction_parameters']['num_features'])
+        method_objects['points'] = points_from_blobs(frame_data, num_blobs=parameters['extraction_parameters']['num_features'])
     return method_objects
 
 

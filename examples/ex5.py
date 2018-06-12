@@ -6,7 +6,7 @@ import os
 from track_sphere.extract_data_opencv import *
 from track_sphere.utils import select_initial_points
 method = 'fit_blobs'
-
+process_method = None
 
 # ======== Settings ========
 
@@ -19,11 +19,11 @@ output_images=200
 
 
 # ======== Settings b========
-method_parameters = {}
+extraction_parameters = {'method':method}
 # method_parameters['maxval'] = 100
 # method_parameters['convex_hull'] = 1000
-method_parameters['initial_points'] = None # set none if you want to select points manually
-method_parameters['initial_points'] = [[60, 109], [89, 66], [91, 108], [96, 142], [139, 113]]
+extraction_parameters['initial_points'] = None # set none if you want to select points manually
+extraction_parameters['initial_points'] = [[60, 109], [89, 66], [91, 108], [96, 142], [139, 113]]
 
 folder_out = '../example_out/ex5/'
 
@@ -45,10 +45,20 @@ export_parameters = {
     'output_images': output_images
 }
 
-if method_parameters['initial_points'] is None:
-    method_parameters['initial_points'] = select_initial_points(file_in)
+if extraction_parameters['initial_points'] is None:
+    extraction_parameters['initial_points'] = select_initial_points(file_in)
+
+
+process_parameters = {'process_method': process_method}
+
+parameters = {
+    'pre-processing': process_parameters,
+    'extraction_parameters': extraction_parameters,
+    'export_parameters': export_parameters
+}
+
 
 
 extract_position_data(file_in, file_out=file_out, max_frame=1000, verbose=False,
-                      method=method, method_parameters=method_parameters, export_parameters=export_parameters)
+                      parameters=parameters)
 
