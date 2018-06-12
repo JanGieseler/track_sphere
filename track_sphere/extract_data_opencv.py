@@ -63,7 +63,6 @@ def is_in_roi(pt, roi):
 
     return n_roi
 
-
 def features_surf(image, parameters, features = None, return_image=False):
     """
     finds features in image using the SURF algorithm
@@ -220,6 +219,7 @@ def moments_roi(image, parameters, points, return_image=False, verbose=False):
 
 
     return data, image
+
 def fit_blobs(image, parameters, points, return_image=False, verbose=False):
     """
     fit an ellipse and tracks feature in image
@@ -290,7 +290,7 @@ def fit_blobs(image, parameters, points, return_image=False, verbose=False):
 
     return data, image
 
-def fit_ellipse(image, parameters, return_image=False):
+def fit_ellipse(image, parameters, return_image=False, verbose=False):
     """
     fit an ellipse and tracks feature in image
     Args:
@@ -317,22 +317,62 @@ def fit_ellipse(image, parameters, return_image=False):
     elif isinstance(parameters['threshold'], int):
         # global threshold
         thresh = cv.threshold(gray, parameters['threshold'], parameters['maxval'], cv.THRESH_BINARY)[1]
+    elif parameters['threshold'] == 'canny':
+        thresh = cv.Canny(gray, threshold1=parameters['threshold_low'], threshold2=['threshold_high'])
+    elif parameters['threshold'] == 'triangle':
+        retVal, thresh = cv.threshold(gray, 0, parameters['maxval'], cv.THRESH_BINARY + cv.THRESH_TRIANGLE)
+    elif parameters['threshold'] == 'testing':
+
+        blurred = cv.GaussianBlur(gray, (3, 3), 0)
+
+        # A lower value of sigma  indicates a tighter threshold, whereas a larger value of sigma  gives a wider threshold.
+        # In general, you will not have to change this sigma  value often. Simply select a single, default sigma  value and apply it to your entire dataset of images.
+        sigma = 0.33
+        # compute the median of the single channel pixel intensities
+        v = np.median(gray)
+
+        # apply automatic Canny edge detection using the computed median
+        lower = int(max(0, (1.0 - sigma) * v))
+        upper = int(min(255, (1.0 + sigma) * v))
+        edged = cv.Canny(gray, lower, upper)
+
+        thresh = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 115, 1)
+        retVal, thresh = cv.threshold(gray, 0, parameters['maxval'], cv.THRESH_BINARY + cv.THRESH_TRIANGLE)
+
+        # show the images
+        cv2.imshow("Original", image)
+        cv2.imshow("Edges", np.hstack([wide, tight, auto]))
+        cv2.waitKey(0)
 
 
     im2, contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     contour_magnet = max(contours, key=len)
 
+    if verbose:
+        print('area of contour', cv.contourArea(contour_magnet))
+
     # make sure it is convex
     if parameters['convex_hull']:
-        contour_magnet = cv.convexHull(contour_magnet, returnPoints=True)
-
+        contour_magnet_hull = cv.convexHull(contour_magnet, returnPoints=True)
+        if verbose:
+            print('area of contour (convex_hull)', cv.contourArea(contour_magnet))
+    else:
+        contour_magnet_hull = contour_magnet
 
     M = cv.moments(contour_magnet)
     cX = M["m10"] / M["m00"]
     cY = M["m01"] / M["m00"]
 
-    ellipse = cv.fitEllipse(contour_magnet)
+
+
+
+    ellipse = cv.fitEllipse(contour_magnet_hull)
+
+    if verbose:
+        print('area of ellipse', np.prod(ellipse[1])*np.pi/4)
+
+
 
     # contour center
     data = [cX, cY]
@@ -344,14 +384,147 @@ def fit_ellipse(image, parameters, return_image=False):
     if return_image:
         # outline of magnet contour
         cv.drawContours(image, [contour_magnet], -1, (0, 255, 0), 1)
+        # outline of magnet contour hull
+        cv.drawContours(image, [contour_magnet_hull], -1, (255, 255, 0), 1)
         # center of ellipse
-        cv.circle(image, (cX, cY), 7, (0, 0, 255), -1)
+        cv.circle(image, (int(cX), int(cY)), 7, (0, 0, 255), -1)
         # outline of ellipse
         cv.ellipse(image, ellipse, (0, 0, 255), 1)
     else:
         image = None
 
     return data, image
+
+
+def check_method_parameters(method, method_parameters, info=None, verbose=False):
+    ################################################################################
+    #### method dependent settings
+    ################################################################################
+
+    if method == 'BackgroundSubtractorMOG2':
+        pass
+    elif method == 'grabCut':
+
+        assert 'roi' in method_parameters
+        assert 'iterations' in method_parameters
+
+    elif method == 'fit_ellipse':
+
+        # check and update the method_parameters dictionary
+        if method_parameters is None:
+            method_parameters = {}
+        if 'threshold' not in method_parameters:
+            # method_parameters['threshold'] = 100
+            method_parameters['threshold'] = 'gaussian'
+        if 'maxval' not in method_parameters:
+            method_parameters['maxval'] = 255
+
+        if 'convex_hull' not in method_parameters:
+            method_parameters['convex_hull'] = True
+        if method_parameters['threshold'] in ('mean', 'gaussian'):
+            # Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
+            if 'blockSize' not in method_parameters:
+                method_parameters['blockSize'] = 21
+            # Constant subtracted from the mean or weighted mean (see the details below). Normally, it is positive but may be zero or negative as well.
+            if 'c' not in method_parameters:
+                method_parameters['c'] = 2
+
+    elif method == 'features_surf':
+        if method_parameters is None:
+            method_parameters = {}
+        if 'xfeatures' not in method_parameters:
+            method_parameters['xfeatures'] = 100
+        if 'HessianThreshold' not in method_parameters:
+            method_parameters['HessianThreshold'] = 1000
+        if 'num_features' not in method_parameters:
+            method_parameters['num_features'] = 5
+
+    elif method == 'optical_flow':
+        method_parameters['num_features'] = 5
+
+    elif method == 'fit_blobs':
+        if 'maxval' not in method_parameters:
+            method_parameters['maxval'] = 255
+        if 'convex_hull' not in method_parameters:
+            method_parameters['convex_hull'] = False
+
+        # take the center of the image as default
+        if 'initial_points' not in method_parameters:
+            method_parameters['initial_points'] = [[int(0.5*info['Width']), int(0.5*info['Height'])]]
+        if 'winSize' not in method_parameters:
+            method_parameters['winSize'] = (20,20)
+
+        method_parameters['num_features'] = len(method_parameters['initial_points'])
+
+        assert len(np.shape(method_parameters['initial_points'])) == 2
+        assert len(method_parameters['initial_points'][0]) == 2
+
+
+    elif method == 'Bright px':
+        pass
+    elif method == 'optical_flow':
+        # check and update the method_parameters dictionary
+        if method_parameters is None:
+            method_parameters = {}
+        if 'winSize' not in method_parameters:
+            method_parameters['winSize'] = (15, 15)
+        if 'maxLevel' not in method_parameters:
+            method_parameters['maxLevel'] = 2
+        if 'criteria' not in method_parameters:
+            method_parameters['criteria'] = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
+    else:
+        print('unknown method. Abort')
+        return None
+    if verbose:
+        print('===> check method parameters')
+
+
+def get_data_header(method, method_parameters, verbose=False):
+    ################################################################################
+    #### method dependent settings
+    ################################################################################
+
+    if method == 'BackgroundSubtractorMOG2':
+        # the names of the data we will extract
+        data_header = ['com x', 'com y', 'mean']
+    elif method == 'grabCut':
+        # the names of the data we will extract
+        data_header = ['com x', 'com y', 'mean']
+    elif method == 'fit_ellipse':
+        data_header = ['contour center x', 'contour center y']
+        data_header += ['ellipse x', 'ellipse y', 'ellipse a', 'ellipse b', 'ellipse angle']
+    elif method == 'features_surf':
+        data_header = sum([['k{:d} x'.format(i),
+                            'k{:d} y'.format(i),
+                            'k{:d} size'.format(i),
+                            'k{:d} angle'.format(i)]
+                           for i in range(method_parameters['num_features'])], [])
+    elif method == 'fit_blobs':
+        # threshold value, ellipse center (x,y), size (x,y) and angle
+        data_header = sum([[
+            'b{:d} thresh'.format(i),
+            'b{:d} x'.format(i),
+            'b{:d} y'.format(i),
+            'b{:d} a'.format(i),
+            'b{:d} b'.format(i),
+            'b{:d} angle'.format(i)]
+            for i in range(method_parameters['num_features'])], [])
+    elif method == 'Bright px':
+        # the names of the data we will extract
+        data_header = ['bright px x', 'bright px y']
+    elif method == 'optical_flow':
+        data_header = sum([['k{:d} x'.format(i),
+                            'k{:d} y'.format(i),
+                            'k{:d} size'.format(i),
+                            'k{:d} angle'.format(i)]
+                           for i in range(5)], [])
+    else:
+        print('unknown method. Abort')
+        return None
+    if verbose:
+        print('===> setup methods')
+
+    return data_header
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
                           verbose = False, method='', method_parameters = None, export_parameters = {}):
@@ -501,134 +674,27 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     if verbose:
         print('===> set input output streams')
 
+    # check the method parameters
+    method_parameters = check_method_parameters(method, method_parameters, info)
+    # get headers for the data
+    data_header = get_data_header(method, method_parameters)
 
     ################################################################################
-    #### method dependent settings
+    #### crete method dependent objects
     ################################################################################
 
     if method == 'BackgroundSubtractorMOG2':
         # fgbg = cv.createBackgroundSubtractorMOG2(detectShadows=False, history=5000) # create background substractor
         fgbg = cv.createBackgroundSubtractorMOG2()  # create background subtractor
-
-        # the names of the data we will extract
-        data_header = ['com x', 'com y', 'mean']
     elif method == 'grabCut':
-
-        assert 'roi' in method_parameters
-        assert 'iterations' in method_parameters
-
         mask = np.zeros((info['Width'], info['Height']), np.uint8)
-
         # Temporary array for the background/foreground model.
         # Not much info in the doc, e.g. don't know what a good length is.
         # For now just using the length from the tutorial (65)
         bgdModel = np.zeros((1, 65), np.float64)
         fgdModel = np.zeros((1, 65), np.float64)
-
-        # the names of the data we will extract
-        data_header = ['com x', 'com y', 'mean']
-    elif method == 'fit_ellipse':
-
-        data_header = ['contour center x', 'contour center y']
-        data_header += ['ellipse x', 'ellipse y', 'ellipse a', 'ellipse b', 'ellipse angle']
-        # check and update the method_parameters dictionary
-        if method_parameters is None:
-            method_parameters = {}
-        if 'threshold' not in method_parameters:
-            # method_parameters['threshold'] = 100
-            method_parameters['threshold'] = 'gaussian'
-        if 'maxval' not in method_parameters:
-            method_parameters['maxval'] = 255
-
-        if 'convex_hull' not in method_parameters:
-            method_parameters['convex_hull'] = True
-        if method_parameters['threshold'] in ('mean', 'gaussian'):
-            # Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
-            if 'blockSize' not in method_parameters:
-                method_parameters['blockSize'] = 21
-            # Constant subtracted from the mean or weighted mean (see the details below). Normally, it is positive but may be zero or negative as well.
-            if 'c' not in method_parameters:
-                method_parameters['c'] = 2
-
-    elif method == 'features_surf':
-        data_header = sum([['k{:d} x'.format(i),
-                            'k{:d} y'.format(i),
-                            'k{:d} size'.format(i),
-                            'k{:d} angle'.format(i)]
-                           for i in range(method_parameters['num_features'])],[])
-        if method_parameters is None:
-            method_parameters = {}
-        if 'xfeatures' not in method_parameters:
-            method_parameters['xfeatures'] = 100
-        if 'HessianThreshold' not in method_parameters:
-            method_parameters['HessianThreshold'] = 1000
-        if 'num_features' not in method_parameters:
-            method_parameters['num_features'] = 5
-
-    elif method == 'optical_flow':
-        method_parameters['num_features'] = 5
-
     elif method == 'fit_blobs':
-        if 'maxval' not in method_parameters:
-            method_parameters['maxval'] = 255
-        if 'convex_hull' not in method_parameters:
-            method_parameters['convex_hull'] = False
-        # method_parameters['num_features'] = 5
-        # method_parameters['detect_points'] = True
-
-        # take the center of the image as default
-        if 'initial_points' not in method_parameters:
-            method_parameters['initial_points'] = [[int(0.5*info['Width']), int(0.5*info['Height'])]]
-        if 'winSize' not in method_parameters:
-            method_parameters['winSize'] = (20,20)
-
-        method_parameters['num_features'] = len(method_parameters['initial_points'])
-
-        # threshold value, ellipse center (x,y), size (x,y) and angle
-        data_header = sum([[
-            'b{:d} thresh'.format(i),
-            'b{:d} x'.format(i),
-            'b{:d} y'.format(i),
-            'b{:d} a'.format(i),
-            'b{:d} b'.format(i),
-            'b{:d} angle'.format(i)]
-            for i in range(method_parameters['num_features'])], [])
-
-        # if method_parameters['detect_points'] is False:
-        # make sure that initial points 2D array with 2 elements per column
-
-        print(method_parameters['initial_points'])
-        print(np.shape(method_parameters['initial_points']))
-        assert len(np.shape(method_parameters['initial_points'])) == 2
-        assert len(method_parameters['initial_points'][0]) == 2
-
-
         points = method_parameters['initial_points']
-
-
-    elif method == 'Bright px':
-        # the names of the data we will extract
-        data_header = ['bright px x', 'bright px y']
-    elif method == 'optical_flow':
-        data_header = sum([['k{:d} x'.format(i),
-                            'k{:d} y'.format(i),
-                            'k{:d} size'.format(i),
-                            'k{:d} angle'.format(i)]
-                           for i in range(5)],[])
-        # check and update the method_parameters dictionary
-        if method_parameters is None:
-            method_parameters = {}
-        if 'winSize' not in method_parameters:
-            method_parameters['winSize'] = (15, 15)
-        if 'maxLevel' not in method_parameters:
-            method_parameters['maxLevel'] = 2
-        if 'criteria' not in method_parameters:
-            method_parameters['criteria'] = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
-    else:
-        print('unknown method. Abort')
-        return None
-    if verbose:
-        print('===> setup methods')
 
 
     ################################################################################

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
+def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0, verbose=False):
     """
     opens a video and runs fit_ellipse on the first frame using the parameters method_parameters
     shows the result
@@ -30,7 +30,7 @@ def check_parameters_fit_ellipse(file_in, method_parameters, frame = 0):
     # read frame
     ret, frame = cap.read()
     # fit ellipse
-    data, frame_out = fit_ellipse(frame, method_parameters, return_image=True)
+    data, frame_out = fit_ellipse(frame, method_parameters, return_image=True, verbose=verbose)
 
 
 
@@ -113,7 +113,7 @@ def check_parameters_features_surf(file_in, method_parameters, features=None, fr
     cv.destroyAllWindows()
 
 if __name__ == '__main__':
-    case = 4
+    case = '20180607_Sample6_bead_1-7'
 
     # ========================================================
     # ==== Case 1 (fit_ellipse): the egg shaped magnet =======
@@ -165,7 +165,6 @@ if __name__ == '__main__':
 
         check_parameters_fit_ellipse(file_in, method_parameters, frame=1000)
 
-    1768
     # ==========================================================================
     # ==== Case 3 (features_surf): the egg shaped magnet  ======================
     # ==========================================================================
@@ -233,3 +232,55 @@ if __name__ == '__main__':
 
 
         check_parameters_fit_blobs(file_in, method_parameters, points=method_parameters['initial_points'], frame=1775)
+
+    # ==========================================================================
+    # ==== video 7 from 20180607_Sample6_bead_1 =======
+    # ==========================================================================
+    if case == '20180607_Sample6_bead_1-7':
+        method = 'fit_ellipse'
+        # ======== Settings ========
+        folder_in = '../raw_data/20180607_Sample6_bead_1/'
+        filename_in = '20180611_Sample_6_Bead_7.avi'
+
+        export_video = False
+        output_fps = 10
+        output_images = 1000
+
+        # gaussian
+        method_parameters = {}
+        method_parameters['threshold'] = 'gaussian'
+        method_parameters['blockSize'] = 11
+        method_parameters['c'] = 5
+        method_parameters['maxval'] = 220
+        method_parameters['convex_hull'] = True
+
+        # # canny
+        # method_parameters = {}
+        # method_parameters['threshold'] = 'canny'
+        # method_parameters['threshold_low'] = 40
+        # method_parameters['threshold_high'] = 80
+        # method_parameters['convex_hull'] = True
+        # # triangle
+        method_parameters = {}
+        method_parameters['threshold'] = 'triangle'
+        method_parameters['maxval'] = 255
+        method_parameters['convex_hull'] = True
+
+
+        # ----- end settings --------
+
+        export_parameters = {
+            'export_video': export_video,
+            'output_fps': output_fps,
+            'output_images': output_images
+        }
+
+
+        file_in = os.path.join(folder_in, filename_in)
+
+        if method == 'fit_blobs' and method_parameters['initial_points'] is None:
+            method_parameters['initial_points'] = select_initial_points(file_in)
+        check_parameters_fit_ellipse(file_in, method_parameters, frame=90000, verbose=True)
+
+        # check_parameters_fit_blobs(file_in, method_parameters, points=method_parameters['initial_points'], frame=1775)
+

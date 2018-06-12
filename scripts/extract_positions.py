@@ -11,18 +11,18 @@ dataset = 'real segemented'
 dataset = 'real'
 dataset = '20180607_Sample6_bead_1'
 
-dataset = 'test'
+# dataset = 'test'
 
 method = 'Bright px'
 method = 'fit_blobs'
-# method = 'fit_ellipse'
+method = 'fit_ellipse'
 
 export_video = False
 output_fps = 2
 # output_images = 1000
 output_images = 10000
 
-max_frame = 610000
+# max_frame = 610000
 # max_frame = 1000
 max_frame = None
 # method_parameters = {'reencode':True}
@@ -193,6 +193,7 @@ if dataset == '20180607_Sample6_bead_1':
     # filename_in = '20180607_Sample_6_Bead_3.avi'
     filename_in = '20180608_Sample_6_Bead_4.avi'
     filename_in = '20180608_Sample_6_Bead_5.avi'
+    filename_in = '20180611_Sample_6_Bead_7.avi'
     # filename_in = '20180529_Sample6_bead_1_direct_thermal_01c-fixed.avi' # doesn't work!
     # folder_in = '/Volumes/Elements/lev_data/20180523_Sample_6_bead_1/'
 

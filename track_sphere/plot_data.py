@@ -4,7 +4,7 @@ from matplotlib.patches import Rectangle, Circle
 
 import numpy as np
 from track_sphere.utils import power_spectral_density
-
+from track_sphere.utils import grab_frame
 
 def annotate_frequencies(ax, annotation_dict, higher_harm=1):
     """
@@ -346,3 +346,58 @@ def plot_video_frame_old_stuff(file_path, frames, xy_position = None, gaussian_f
             axo.add_patch(rect)
 
     return fig, ax
+
+
+
+
+if __name__ == '__main__':
+    import os
+    import cv2 as cv
+
+    folder_in = '../example_data/'
+    filename_in = '20171207_magnet.avi'
+
+    # ======== Settings ========
+    folder_in = '../raw_data/20180607_Sample6_bead_1/'
+    filename_in = '20180611_Sample_6_Bead_7.avi'
+
+    frame_id = 9000
+
+
+    file_in = os.path.join(folder_in, filename_in)
+
+    frame_in = grab_frame(file_in, verbose=True, frame_id=frame_id)
+
+    gray = cv.cvtColor(frame_in, cv.COLOR_BGR2GRAY)
+
+
+    # plt.hist(frame_in.flatten(), bins=25)
+    # plt.show()
+    # x = cv.calcHist(frame_in,channels=1, mask=None, histSize=10)
+    # print(x)
+    # input('hit any key to continue...')
+
+    blurred = cv.GaussianBlur(gray, (3, 3), 0)
+
+    wide = cv.Canny(blurred, 10, 200)
+    tight = cv.Canny(blurred, 225, 250)
+
+
+
+    # A lower value of sigma  indicates a tighter threshold, whereas a larger value of sigma  gives a wider threshold.
+    # In general, you will not have to change this sigma  value often. Simply select a single, default sigma  value and apply it to your entire dataset of images.
+    sigma = 0.10
+    # compute the median of the single channel pixel intensities
+    v = np.median(blurred)
+
+    # apply automatic Canny edge detection using the computed median
+    lower = int(max(0, (1.0 - sigma) * v))
+    upper = int(min(255, (1.0 + sigma) * v))
+    auto = cv.Canny(blurred, lower, upper)
+
+
+    # show the images
+    cv.imshow("Original", frame_in)
+    cv.imshow("Edges", np.hstack([wide, tight, auto]))
+    cv.waitKey(0)
+
