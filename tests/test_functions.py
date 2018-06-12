@@ -92,8 +92,8 @@ if __name__ == '__main__':
     print('asa', parameters)
     method_objects = get_method_objects(parameters)
 
-    frame_out, feature_list = process_image(frame_in, pre_process_parameters=processing_parameters, method_objects=method_objects,
-                              verbose=True, return_features=True)
+    frame_out, feature_list = process_image(frame_in, parameters=processing_parameters, method_objects=method_objects,
+                                            verbose=True, return_features=True)
 
     frame_out_pre = deepcopy(frame_out)
     #convert to color

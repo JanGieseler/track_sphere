@@ -365,12 +365,12 @@ def check_method_parameters(parameters, info=None, verbose=False):
 
 
     assert 'extraction_parameters' in parameters
-    assert 'pre-processing' in parameters
 
     method = parameters['extraction_parameters']['method']
     if verbose:
         print('check_method_parameters: ', method)
-
+    if not 'pre-processing' in parameters:
+        parameters['pre-processing'] = {}
 
 
     ################################################################################
@@ -527,7 +527,7 @@ def get_frame_data(frame, parameters, return_features=False, method_objects=None
     if method == 'Bright px':
         (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame[:, :, 0], None)
         frame_data = [maxLoc[1], maxLoc[0]]
-        features = [tuple(frame_data)]
+        features = [Feature('point', (maxLoc[0], maxLoc[1]), None)]
 
     elif method == 'fit_ellipse':
         frame_data, features = fit_ellipse(frame, return_features=return_features, parameters=parameters, verbose=verbose)
@@ -542,13 +542,13 @@ def get_frame_data(frame, parameters, return_features=False, method_objects=None
 
     return frame_data, features
 
-def process_image(frame, pre_process_parameters, method_objects, verbose=False, return_features=False):
+def process_image(frame, parameters, method_objects, verbose=False, return_features=False):
     """
     proccesses the frame, e.g. substract background, thresholding
 
     Args:
         frame:
-        pre_process_parameters:
+        parameters:
         method_objects:
 
     Returns:
@@ -556,12 +556,11 @@ def process_image(frame, pre_process_parameters, method_objects, verbose=False, 
     """
 
     if verbose:
-        print('process_method', pre_process_parameters['process_method'])
-        print('=====adasda', np.shape(frame))
+        print('process_method', parameters['process_method'])
 
     feature_list = []
 
-    if pre_process_parameters['process_method'] == 'BackgroundSubtractorMOG2':
+    if parameters['process_method'] == 'BackgroundSubtractorMOG2':
 
         fgbg = method_objects['fgbg']
         frame_out = fgbg.apply(frame)
@@ -570,21 +569,21 @@ def process_image(frame, pre_process_parameters, method_objects, verbose=False, 
         frame_out = cv.cvtColor(frame_out, cv.COLOR_BGR2GRAY)
 
 
-    elif pre_process_parameters['process_method'] == 'grabCut':
+    elif parameters['process_method'] == 'grabCut':
         mask, bgdModel, fgdModel = method_objects['mask'], method_objects['bgdModel'], method_objects['fgdModel']
-        cv.grabCut(frame, mask, pre_process_parameters['roi'], bgdModel, fgdModel, pre_process_parameters['iterations'],
+        cv.grabCut(frame, mask, parameters['roi'], bgdModel, fgdModel, parameters['iterations'],
                    cv.GC_INIT_WITH_RECT) #+cv.GC_INIT_WITH_MASK
         mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
         frame_out = frame * mask2[:, :, np.newaxis]
 
         if return_features:
             # feature_list = []
-            feature_list = [Feature('roi', pre_process_parameters['roi'], None)]
+            feature_list = [Feature('roi', parameters['roi'], None)]
 
         # convert to gray scale
         frame_out = cv.cvtColor(frame_out, cv.COLOR_BGR2GRAY)
 
-    elif pre_process_parameters['process_method'] in ['adaptive_thresh_mean', 'adaptive_thresh_gauss', 'threshold', 'thresh_canny', 'thresh_triangle']:
+    elif parameters['process_method'] in ['adaptive_thresh_mean', 'adaptive_thresh_gauss', 'threshold', 'thresh_canny', 'thresh_triangle']:
         # if we received a color image convert to gray scale
         if len(np.shape(frame)) == 3:
             gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -595,30 +594,34 @@ def process_image(frame, pre_process_parameters, method_objects, verbose=False, 
 
 
         # mean threshold
-        if pre_process_parameters['process_method'] == 'adaptive_thresh_mean':
-            maxval = pre_process_parameters['maxval']
-            blockSize = pre_process_parameters['blockSize']
-            c = pre_process_parameters['c']
+        if parameters['process_method'] == 'adaptive_thresh_mean':
+            maxval = parameters['maxval']
+            blockSize = parameters['blockSize']
+            c = parameters['c']
             frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, blockSize, c)
-        elif pre_process_parameters == 'adaptive_thresh_gauss':
+        elif parameters == 'adaptive_thresh_gauss':
             # gaussian threshold
-            maxval = pre_process_parameters['maxval']
-            blockSize = pre_process_parameters['blockSize']
-            c = pre_process_parameters['c']
+            maxval = parameters['maxval']
+            blockSize = parameters['blockSize']
+            c = parameters['c']
             frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, blockSize, c)
-        elif pre_process_parameters['process_method'] == 'threshold':
+        elif parameters['process_method'] == 'threshold':
             # global threshold
-            maxval = pre_process_parameters['maxval']
-            threshold = pre_process_parameters['threshold']
+            maxval = parameters['maxval']
+            threshold = parameters['threshold']
             frame_out = cv.threshold(gray, threshold, maxval, cv.THRESH_BINARY)[1]
-        elif pre_process_parameters['process_method'] == 'thresh_canny':
-            threshold_low = pre_process_parameters['threshold_low']
-            threshold_high = pre_process_parameters['threshold_high']
+        elif parameters['process_method'] == 'thresh_canny':
+            threshold_low = parameters['threshold_low']
+            threshold_high = parameters['threshold_high']
             frame_out = cv.Canny(gray, threshold1=threshold_low, threshold2=threshold_high)
-        elif pre_process_parameters['process_method'] == 'thresh_triangle':
-            maxval = pre_process_parameters['process_method']['maxval']
+        elif parameters['process_method'] == 'thresh_triangle':
+            maxval = parameters['process_method']['maxval']
             retVal, frame_out = cv.threshold(gray, 0, maxval, cv.THRESH_BINARY + cv.THRESH_TRIANGLE)
 
+    elif parameters['process_method'] == None:
+        frame_out = frame
+    else:
+        raise KeyError('did not find process_method')
 
     if verbose:
         print('cecksum frame_in', np.sum(frame))
@@ -672,27 +675,27 @@ def get_method_objects(parameters):
 
     return method_objects
 
-def update_method_objects(method, method_parameters, method_objects, frame_data):
+def update_method_objects(parameters, method_objects, frame_data):
     """
     updates the method objects based on the frame_data from the previous frame
     Args:
         method:
-        method_parameters:
+        parameters:
         method_objects:
         frame_data:
 
     Returns:
 
     """
+    method = parameters['extraction_parameters']['method']
     if method == 'fit_blobs':
         # retrieve the points for the next iteration
-        method_objects = points_from_blobs(frame_data, num_blobs=method_parameters['num_features'])
+        method_objects = points_from_blobs(frame_data, num_blobs=parameters['num_features'])
 
     return method_objects
 
 
 def add_features_to_image(image, feature_list, verbose=False):
-
 
     for feature in feature_list:
         if feature.type == 'contour':
@@ -786,14 +789,11 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     """
 
 
-    assert 'method' in parameters
+    assert 'extraction_parameters' in parameters
+    # assert 'pre-processing' in parameters
+    # assert 'export_parameters' in parameters
 
-    method = parameters['method']
-
-    if not 'export_parameters' in parameters:
-        parameters['export_parameters'] = {}
-
-    export_parameters = parameters['export_parameters']
+    method = parameters['extraction_parameters']['method']
 
     ################################################################################
     #### optional preprocessing steps that don't seem to be necessary, like reencoding with ffmepg and splitting the file into many small files
@@ -823,7 +823,10 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
     ################################################################################
     #### checks the validity of the inputs and checks for existing files
     ################################################################################
+    if not 'export_parameters' in parameters:
+        parameters['export_parameters'] = {}
 
+    export_parameters = parameters['export_parameters']
     assert isinstance(file_in, str)
 
     if file_out is None:
@@ -943,8 +946,6 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
     sys.stdout.flush()
     for frame_idx in tqdm(range(min_frame, max_frame)):
-        if return_image_features:
-            feature_list = [] # this keeps feature_list
 
         if verbose:
             print('frame id: ', frame_idx)
@@ -953,10 +954,14 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             ret, frame_in = cap.read()
         except Exception as e:
             ret = False
+
         if ret:
 
             # decide whether or not to return return_image_features
             return_image_features = export_video or (output_images > 0 and frame_idx % output_images == 0)
+
+            if return_image_features:
+                feature_list = []  # this keeps feature_list
 
             # preprocess image, e.g. thresholding, background subtraction
             frame_in_processed, fl = process_image(frame_in,
@@ -981,6 +986,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             # add features from fit to image
             if return_image_features:
                 frame_out = deepcopy(frame_in)
+
                 add_features_to_image(frame_out, feature_list[1])
 
             if export_video:
@@ -994,11 +1000,15 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             continue # go to next iteration
 
         if output_images>0 and frame_idx%output_images==0:
+            #convert to color if gray scale image
+            if len(np.shape(frame_in_processed))==2:
+                frame_in_processed = cv.cvtColor(frame_in_processed, cv.COLOR_GRAY2BGR)
             # combine original image and the contours
             add_features_to_image(frame_in_processed, feature_list[0])
             # frame_out = cv.addWeighted(frame_in, 0.5, frame_out, 0.5, 0.0)
 
             # cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))), frame_out)
+
 
             cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))),
                        np.hstack([frame_in, frame_in_processed, frame_out]))

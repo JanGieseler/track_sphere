@@ -10,6 +10,7 @@ from track_sphere.extract_data_opencv import *
 dataset = 'real segemented'
 dataset = 'real'
 dataset = '20180607_Sample6_bead_1'
+dataset = 'test'
 
 # dataset = 'test'
 
@@ -26,12 +27,9 @@ output_images = 100
 max_frame = 2000
 # max_frame = None
 # method_parameters = {'reencode':True}
-method_parameters = {}
 
-# export_video = True
-# output_fps = 2
-# output_images = 10000
-# max_frame = 1000
+process_method = 'grabCut'
+
 
 ################################################################################
 #### for our test data
@@ -57,29 +55,7 @@ if dataset == 'test':
         method_parameters['maxval'] = 255
         method_parameters['convex_hull'] = True
 
-    # ----- end settings --------
 
-
-    export_parameters = {
-        'export_video': export_video,
-        'output_fps': output_fps,
-        'output_images': output_images
-    }
-
-    filename_out = filename_in.replace('.avi', '-{:s}.avi'.format(method))
-
-
-    file_in = os.path.join(folder_in, filename_in)
-    file_out = os.path.join(folder_out, filename_out)
-
-
-
-    if method == 'fit_blobs' and method_parameters['initial_points'] is None:
-        method_parameters['initial_points'] = select_initial_points(file_in)
-
-
-    extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=None, verbose=False,
-                          method=method, method_parameters=method_parameters, export_parameters=export_parameters)
 ################################################################################
 #### for real data
 ################################################################################
@@ -246,3 +222,43 @@ if dataset == '20180607_Sample6_bead_1':
     print('METHOD', method)
     extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=max_frame, verbose=False,
                           method=method, method_parameters=method_parameters, export_parameters=export_parameters)
+
+
+
+
+
+################################################################################
+#### run the script
+################################################################################
+
+extraction_parameters = {'method': method}
+process_parameters = {'process_method': process_method}
+
+
+export_parameters = {
+    'export_video': export_video,
+    'output_fps': output_fps,
+    'output_images': output_images
+}
+
+parameters = {
+    'pre-processing': process_parameters,
+    'extraction_parameters': extraction_parameters,
+    'export_parameters': export_parameters
+}
+
+
+filename_out = filename_in.replace('.avi', '-{:s}.avi'.format(method))
+
+
+file_in = os.path.join(folder_in, filename_in)
+file_out = os.path.join(folder_out, filename_out)
+
+
+
+if method == 'fit_blobs' and method_parameters['initial_points'] is None:
+    method_parameters['initial_points'] = select_initial_points(file_in)
+
+
+extract_position_data(file_in, file_out=file_out, min_frame=0, max_frame=None, verbose=False,
+                      parameters=parameters)
