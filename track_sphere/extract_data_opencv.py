@@ -565,9 +565,6 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
         fgbg = method_objects['fgbg']
         frame_out = fgbg.apply(frame)
 
-        # convert to gray scale
-        frame_out = cv.cvtColor(frame_out, cv.COLOR_BGR2GRAY)
-
 
     elif parameters['process_method'] == 'grabCut':
         mask, bgdModel, fgdModel = method_objects['mask'], method_objects['bgdModel'], method_objects['fgdModel']
@@ -654,6 +651,7 @@ def get_method_objects(parameters):
         fgbg = cv.createBackgroundSubtractorMOG2(detectShadows=pre_process_parameters['detectShadows'], history=pre_process_parameters['history'])  # create background subtractor
 
         method_objects['fgbg'] = fgbg
+
     elif pre_process_method == 'grabCut':
 
 
