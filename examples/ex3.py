@@ -20,7 +20,8 @@ output_images=200
 
 case = 'a' #
 case = 'b' #
-case = 'video' #
+# case = 'video' #
+case = 'c'
 
 # ======== Settings a ========
 if case == 'a':
@@ -32,7 +33,7 @@ if case == 'a':
     process_parameters['convex_hull'] = False
     folder_out = '../example_out/ex3-a/'
 # ======== Settings b========
-if case in ['b','video']:
+elif case in ['b','video']:
 
     process_parameters = {'process_method': 'adaptive_thresh_mean'}
     # method_parameters['threshold'] = 'mean'
@@ -42,6 +43,15 @@ if case in ['b','video']:
     process_parameters['maxval'] = 255
     process_parameters['convex_hull'] = True
     folder_out = '../example_out/ex3-b/'
+
+elif case == 'c':
+
+    process_parameters = {'process_method': 'morph'}
+    # process_parameters['blockSize'] = 35
+    # process_parameters['c'] = 11
+    # process_parameters['maxval'] = 255
+    # process_parameters['convex_hull'] = False
+    folder_out = '../example_out/ex3-c/'
 
 # ======== run script ========
 if case == 'video':

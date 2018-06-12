@@ -313,7 +313,11 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     assert len(np.shape(image_gray)) == 2
 
     im2, contours, hierarchy = cv.findContours(image_gray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    hierarchy = hierarchy[0]
 
+    # keep only the contours without a parent, i.e. only outer contours
+    contours = [c for h, c in zip(hierarchy, contours) if h[-1] == -1]
+    # now select the longest contour
     contour_magnet = max(contours, key=len)
 
     if verbose:
@@ -356,6 +360,10 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
             Feature('contour', contour_magnet_hull, None),
             Feature('point', (int(cX), int(cY)), None)]
 
+        # for cont in contours:
+        #     features += [Feature('contour', cont, None)]
+
+
         if not ellipse[2] is None:
             features += [Feature('ellipse', ellipse, None)]
     else:
@@ -364,6 +372,18 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     return data, features
 
 def check_method_parameters(parameters, info=None, verbose=False):
+    """
+
+    check the parameter and set to default the parameters that are missing
+
+    Args:
+        parameters:
+        info:
+        verbose:
+
+    Returns:
+
+    """
 
 
     assert 'extraction_parameters' in parameters
@@ -394,6 +414,25 @@ def check_method_parameters(parameters, info=None, verbose=False):
                 parameters['pre-processing']['mask_height'] = info['Height']
             if 'iterations' not in parameters['pre-processing']:
                 parameters['pre-processing']['iterations'] = 5
+
+        elif parameters['pre-processing']['process_method'] in ['adaptive_thresh_mean',
+                                                            'adaptive_thresh_gauss']:
+            parameters['pre-processing']['maxval'] = 255
+            parameters['pre-processing']['blockSize'] = 35
+            parameters['pre-processing']['c'] = 11
+
+        elif parameters['pre-processing']['process_method'] in ['threshold', 'thresh_triangle']:
+            parameters['pre-processing']['maxval'] = 255
+        elif parameters['pre-processing']['process_method'] == 'thresh_canny':
+            parameters['pre-processing']['threshold_low'] = 50
+            parameters['pre-processing']['threshold_high'] = 120
+        elif parameters['pre-processing']['process_method'] == 'morph':
+            parameters['pre-processing']['maxval'] = 255
+            parameters['pre-processing']['blockSize'] = 35
+            parameters['pre-processing']['c'] = 11
+            parameters['pre-processing']['k_size_noise'] = 3
+            parameters['pre-processing']['k_size_close'] = 11
+
     else:
         parameters['pre-processing']['process_method'] = None
 
@@ -445,7 +484,6 @@ def check_method_parameters(parameters, info=None, verbose=False):
         assert len(np.shape(parameters['extraction_parameters']['initial_points'])) == 2
         assert len(parameters['extraction_parameters']['initial_points'][0]) == 2
 
-
     elif method == 'Bright px':
         pass
     elif method == 'optical_flow':
@@ -471,13 +509,8 @@ def get_data_header(method_parameters, verbose=False):
     #### method dependent settings
     ################################################################################
     method = method_parameters['method']
-    if method == 'BackgroundSubtractorMOG2':
-        # the names of the data we will extract
-        data_header = ['com x', 'com y', 'mean']
-    elif method == 'grabCut':
-        # the names of the data we will extract
-        data_header = ['com x', 'com y', 'mean']
-    elif method == 'fit_ellipse':
+
+    if method == 'fit_ellipse':
         data_header = ['contour center x', 'contour center y']
         data_header += ['ellipse x', 'ellipse y', 'ellipse a', 'ellipse b', 'ellipse angle']
     elif method == 'features_surf':
@@ -616,8 +649,39 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
             threshold_high = parameters['threshold_high']
             frame_out = cv.Canny(gray, threshold1=threshold_low, threshold2=threshold_high)
         elif parameters['process_method'] == 'thresh_triangle':
-            maxval = parameters['process_method']['maxval']
+            maxval = parameters['maxval']
             retVal, frame_out = cv.threshold(gray, 0, maxval, cv.THRESH_BINARY + cv.THRESH_TRIANGLE)
+
+    elif parameters['process_method'] == 'morph':
+        # if we received a color image convert to gray scale
+        if len(np.shape(frame)) == 3:
+            gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        elif len(np.shape(frame)) == 2:
+            gray = frame
+        else:
+            raise ValueError('unexpected shape')
+
+        maxval = parameters['maxval']
+        blockSize = parameters['blockSize']
+        c = parameters['c']
+
+        k_size_noise = parameters['k_size_noise']
+        k_size_close = parameters['k_size_close']
+        # frame_out = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, blockSize, c)
+        frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, blockSize, c)
+
+        frame_out = cv.bitwise_not(frame_out)
+
+
+        # noise reduction
+        if k_size_noise>0:
+            kernel_open = cv.getStructuringElement(cv.MORPH_ELLIPSE, (k_size_noise, k_size_noise))
+            frame_out = cv.morphologyEx(frame_out, cv.MORPH_OPEN, kernel_open, iterations=1)
+
+        # close the contours
+        if k_size_close > 0:
+            kernel_close = cv.getStructuringElement(cv.MORPH_ELLIPSE, (k_size_close, k_size_close))
+            frame_out = cv.morphologyEx(frame_out, cv.MORPH_CLOSE, kernel_close, iterations=1)
 
     elif parameters['process_method'] == None:
         frame_out = frame
@@ -701,27 +765,26 @@ def update_method_objects(parameters, method_objects, frame_data):
         method_objects['points'] = points_from_blobs(frame_data, num_blobs=parameters['extraction_parameters']['num_features'])
     return method_objects
 
-
 def add_features_to_image(image, feature_list, verbose=False):
 
     for feature in feature_list:
         if feature.type == 'contour':
             # outline of contour
-            if verbose:
-                print('adding contour')
+            # if verbose:
+            #     print('adding contour')
             color = feature.color if feature.color is not None else (0, 255, 0)
             cv.drawContours(image, [feature.data], -1, color, 1)
         elif feature.type == 'point':
-            if verbose:
-                print('adding point')
+            # if verbose:
+            #     print('adding point')
             cv.circle(image, (int(feature.data[0]), int(feature.data[1])), 3, (0, 0, 255), -1)
         elif feature.type == 'ellipse':
-            if verbose:
-                print('adding ellipse')
+            # if verbose:
+            #     print('adding ellipse')
             cv.ellipse(image, feature.data, (0, 0, 255), 1)
         elif feature.type == 'roi':
-            if verbose:
-                print('adding roi')
+            # if verbose:
+            #     print('adding roi')
             pt1 = tuple(feature.data[0:2])
             # pt2 = (pt1[0]+feature[2], pt1[1]+feature[3])
             pt2 = tuple(feature.data[2:4])
