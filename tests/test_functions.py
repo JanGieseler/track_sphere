@@ -113,6 +113,9 @@ if __name__ == '__main__':
 
     cv.imshow("out", np.hstack([frame_in, frame_out_pre, frame_out]))
 
+    cv.imwrite('/Users/rettentulla/PycharmProjects/track_sphere/processed_data/xx.jpg',
+               np.hstack([frame_in, frame_out_pre, frame_out]))
+
     # print(type(frame_in))
     # print('asadsda', np.shape(frame_in))
     # frame_data, frame_out = get_frame_data(frame_in, method, method_parameters=method_parameters, verbose=True,

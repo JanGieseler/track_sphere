@@ -965,7 +965,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
                                                    return_features=return_image_features
                                                    )
             if return_image_features:
-                feature_list += fl
+                feature_list += [fl]
             # extract the parameters from the preprocessed image
             frame_data, fl = get_frame_data(frame_in_processed,
                                             parameters=extraction_parameters,
@@ -973,14 +973,15 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
                                             method_objects=method_objects,
                                             return_features=return_image_features)
             if return_image_features:
-                feature_list += fl
+                feature_list += [fl]
 
             # update objects that change from one iteration to the next, e.g. center points of rois
             method_objects = update_method_objects(parameters, method_objects, frame_data)
 
-            # add features to image
+            # add features from fit to image
             if return_image_features:
-                frame_out = add_features_to_image(frame_in, image_features)
+                frame_out = deepcopy(frame_in)
+                add_features_to_image(frame_out, feature_list[1])
 
             if export_video:
                 if buffer_time>0:
@@ -994,10 +995,14 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         if output_images>0 and frame_idx%output_images==0:
             # combine original image and the contours
-            frame_out = 0.5*frame_in+ 0.5*frame_out
+            add_features_to_image(frame_in_processed, feature_list[0])
             # frame_out = cv.addWeighted(frame_in, 0.5, frame_out, 0.5, 0.0)
 
-            cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))), frame_out)
+            # cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))), frame_out)
+
+            cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}.jpg'.format(frame_idx))),
+                       np.hstack([frame_in, frame_in_processed, frame_out]))
+
             # cv.imwrite(os.path.join(img_dir, os.path.basename(file_out).replace('.avi', '-{:d}_initit.jpg'.format(frame_idx))), frame_in)
 
         data_set.append(frame_data)
