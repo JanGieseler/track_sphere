@@ -8,7 +8,7 @@ from track_sphere.read_write import grab_frame
 from track_sphere.utils import power_spectral_density, avrg
 from track_sphere.plot_utils import annotate_frequencies
 
-def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg=None, plot_type = 'lin'):
+def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg=None, plot_type = 'lin', verbose=False, normalize=True, return_data=False):
     """
 
     Args:
@@ -32,11 +32,19 @@ def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg
                              figsize=(8 * axes_shape[1], 3 * axes_shape[0]))
 
 
+    if return_data:
+        #containers for the data
+        p_list = []
     modes = {}
     for i, row in enumerate(zip(coordinates, axes)):
+
         #     print('row', row)
         c_row, a_row = row
         for c, ax in zip(c_row, a_row):
+
+            if verbose:
+                print('plotting ' + c)
+
             if c == 'area':
                 d = data[feature + ' a'] * data[feature + ' b'] * np.pi
             else:
@@ -49,14 +57,17 @@ def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg
             if n_avrg is not None:
                 f, p = avrg(f, n=n_avrg), avrg(p, n=n_avrg)
 
+            if normalize:
+                p = p / max(p)
+
             if plot_type == 'log':
-                ax.loglog(f, p / max(p), linewidth=3)
+                ax.loglog(f, p, linewidth=3)
             elif plot_type == 'lin':
-                ax.plot(f, p / max(p), linewidth=3)
+                ax.plot(f, p, linewidth=3)
             elif plot_type == 'semilogy':
-                ax.semilogy(f, p / max(p), linewidth=3)
+                ax.semilogy(f, p, linewidth=3)
             elif plot_type == 'semilogx':
-                ax.semilogx(f, p / max(p), linewidth=3)
+                ax.semilogx(f, p, linewidth=3)
 
             if len(annotation_dict) > 0:
                 annotate_frequencies(ax, annotation_dict, higher_harm=1)
@@ -70,30 +81,50 @@ def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg
             if i == len(coordinates) - 1:
                 ax.set_xlabel('frequency (Hz)')
 
+            if return_data:
 
-    return fig
+                # containers for the data
+                p_list.append(p)
+
+    if return_data:
+        return fig, {'frequencies': f, 'spectra':p_list, 'coordinates':coordinates}
+    else:
+        return fig
             # ax2.set_xlabel('time (s)')
     # ax2.set_ylabel('amplitude (px)')
     # annotate_frequencies(ax, annotation_dict, 0.5, higher_harm=2)
 
-def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_avrg=None, plot_type='lin', normalize=True):
+def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_avrg=None, plot_type='lin', normalize=True, axes=None, verbose=False):
     for mode in ['x', 'y', 'z', '2r', 'r']:
         assert mode in annotation_dict
+
     coordinates = [['x', 'y', 'z'], ['r', '2r', 'm']]
     feature = 'ellipse'
 
     time_step = 1. / info['info']['FrameRate']
     axes_shape = np.shape(coordinates)
-    fig, axes = plt.subplots(axes_shape[0], axes_shape[1], sharey=False, sharex=False,
-                             figsize=(8 * axes_shape[1], 3 * axes_shape[0]))
 
+
+    if axes is None:
+        fig, axes = plt.subplots(axes_shape[0], axes_shape[1], sharey=False, sharex=False,
+                                 figsize=(8 * axes_shape[1], 3 * axes_shape[0]))
+    else:
+        fig = None
+
+    if verbose:
+        print('axes shape', axes_shape, np.shape(axes), np.shape(coordinates))
 
     modes = {}
     for i, row in enumerate(zip(coordinates, axes)):
-        #     print('row', row)
-        c_row, a_row = row
-        for mode, ax in zip(c_row, a_row):
 
+        c_row, a_row = row
+        if verbose:
+            print('row', i, c_row)
+        if verbose:
+            print('columns', np.shape(c_row), np.shape(a_row))
+        for mode, ax in zip(c_row, a_row):
+            if verbose:
+                print('====', mode)
             axis_peak = mode
             # if mode in ['x', 'y', 'z']:
             #     data_labels = ['x', 'y', 'area']
@@ -126,6 +157,7 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
 
                 if normalize:
                     p = p / max(p)
+
                 if plot_type == 'log':
                     ax.loglog(f, p, linewidth=3)
                 elif plot_type == 'lin':
@@ -157,9 +189,11 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
             if i == len(coordinates) - 1:
                 ax.set_xlabel('frequency (Hz)')
 
-    return fig
+    return fig, axes
 
-def plot_psd_vs_time(x, time_step, start_frame = 0, window_length= 1000, end_frame = None,full_spectrum=True, frequency_range= None, ax = None, plot_avrg = False, verbose = False):
+
+def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=None, full_spectrum=True,
+                     frequency_range=None, ax=None, plot_avrg=False, verbose=False, return_data=False):
     """
 
     Args:
@@ -189,7 +223,8 @@ def plot_psd_vs_time(x, time_step, start_frame = 0, window_length= 1000, end_fra
         print('total number of frames:\t\t{:d}'.format(N_frames))
         print('total number of windows:\t{:d}'.format(N_windows))
 
-
+    # substract mean to get rid of large 0-frequency peak
+    x = x-np.mean(x)
     # reshape the timetrace such that each row is a window
     X = x[start_frame:start_frame+window_length*N_windows].values.reshape(N_windows, window_length)
     P = []
@@ -229,8 +264,9 @@ def plot_psd_vs_time(x, time_step, start_frame = 0, window_length= 1000, end_fra
 
 
     if plot_avrg:
-        pmean =  np.mean(P, axis=0)
+        pmean = np.mean(P, axis=0)
         ax[0].semilogy(f, pmean)
+        ax[0].set_ylim([min(pmean), max(pmean)])
         ax[ax_id].set_ylim([min(pmean), max(pmean)])
 
     ax[ax_id].set_xlim(xlim)
@@ -238,11 +274,19 @@ def plot_psd_vs_time(x, time_step, start_frame = 0, window_length= 1000, end_fra
     ax[ax_id].set_xlabel('frequency (Hz)')
     ax[ax_id].set_ylabel('time (s)')
 
-    return fig, ax
+    if return_data:
+        return fig, ax, {'spectra':P, 'frequencies':f}
+    else:
+        return fig, ax
 
-def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1000, end_frame = None,full_spectrum = True, frequency_range= None, ax = None,  plot_avrg = False):
+def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1000, end_frame = None,full_spectrum = True, frequency_range= None, ax = None,  plot_avrg = False, return_data=False):
     """
 
+    time trace x is chopped up into segments of length window_length
+
+    for each window we calculate the psd
+
+    Plots all the PSD calculated from the timetrace as a 1D plot
     Args:
         x: time trace
         time_step: time_step between datapoints
@@ -332,7 +376,10 @@ def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1
     ax.set_xlabel('frequency (Hz)')
     ax.set_ylabel('psd (arb.u.)')
 
-    return fig, ax
+    if return_data:
+        return fig, ax, {'spectra': P, 'frequencies': f}
+    else:
+        return fig, ax
 
 def plot_timetrace(x, time_step, window_length =1, start=None, end =None, start_end_unit = 'frames', ax = None, verbose = False):
     """
