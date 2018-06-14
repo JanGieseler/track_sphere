@@ -3,38 +3,161 @@ from scipy.ndimage.filters import gaussian_filter
 from matplotlib.patches import Rectangle, Circle
 
 import numpy as np
-from track_sphere.utils import power_spectral_density
-from track_sphere.utils import grab_frame
+from track_sphere.read_write import grab_frame
 
-def annotate_frequencies(ax, annotation_dict, higher_harm=1):
+from track_sphere.utils import power_spectral_density, avrg
+from track_sphere.plot_utils import annotate_frequencies
+
+def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg=None, plot_type = 'lin'):
     """
 
-    annotates the plot on axis ax
-
     Args:
-        ax:
-        annotation_dict: dictionary where keys are the text label and values are [x, y] coordinates
-        higher_harm:
+        data:
+        info:
+        annotation_dict:
+        freq_range:
+        n_avrg:
+        plot_type:
 
     Returns:
 
     """
-    for k, (x, y) in annotation_dict.items():
-        for hh in range(higher_harm):
 
-            if hh == 0:
-                text = k
+    coordinates = [['x', 'y', 'area'], ['a', 'b', 'angle']]
+    feature = 'ellipse'
+
+    time_step = 1. / info['info']['FrameRate']
+    axes_shape = np.shape(coordinates)
+    fig, axes = plt.subplots(axes_shape[0], axes_shape[1], sharey=False, sharex=False,
+                             figsize=(8 * axes_shape[1], 3 * axes_shape[0]))
+
+
+    modes = {}
+    for i, row in enumerate(zip(coordinates, axes)):
+        #     print('row', row)
+        c_row, a_row = row
+        for c, ax in zip(c_row, a_row):
+            if c == 'area':
+                d = data[feature + ' a'] * data[feature + ' b'] * np.pi
             else:
-                text = '2' + k
-                x = 2 * x
-                y += 0.2
+                d = data[feature + ' ' + c]
 
-            ax.plot([x, x], [y - 0.2, y], '--')
-            ax.annotate(text, xy=(x, y), xytext=(x + 1, y),
-                        arrowprops=None,
-                        )
+            d = d - np.mean(d) # get rid of DC off set
+
+            f, p = power_spectral_density(d, time_step, frequency_range=freq_range)
+
+            if n_avrg is not None:
+                f, p = avrg(f, n=n_avrg), avrg(p, n=n_avrg)
+
+            if plot_type == 'log':
+                ax.loglog(f, p / max(p), linewidth=3)
+            elif plot_type == 'lin':
+                ax.plot(f, p / max(p), linewidth=3)
+            elif plot_type == 'semilogy':
+                ax.semilogy(f, p / max(p), linewidth=3)
+            elif plot_type == 'semilogx':
+                ax.semilogx(f, p / max(p), linewidth=3)
+
+            if len(annotation_dict) > 0:
+                annotate_frequencies(ax, annotation_dict, higher_harm=1)
+            #         annotate_frequencies(ax, annotation_dict, higher_harm=1)
+
+            modes[c] = f[np.argmax(p)]
+
+            ax.set_ylabel(c + ' (norm)')
+            ax.set_xlim((min(f), max(f)))
+
+            if i == len(coordinates) - 1:
+                ax.set_xlabel('frequency (Hz)')
 
 
+    return fig
+            # ax2.set_xlabel('time (s)')
+    # ax2.set_ylabel('amplitude (px)')
+    # annotate_frequencies(ax, annotation_dict, 0.5, higher_harm=2)
+
+def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_avrg=None, plot_type='lin', normalize=True):
+    for mode in ['x', 'y', 'z', '2r', 'r']:
+        assert mode in annotation_dict
+    coordinates = [['x', 'y', 'z'], ['r', '2r', 'm']]
+    feature = 'ellipse'
+
+    time_step = 1. / info['info']['FrameRate']
+    axes_shape = np.shape(coordinates)
+    fig, axes = plt.subplots(axes_shape[0], axes_shape[1], sharey=False, sharex=False,
+                             figsize=(8 * axes_shape[1], 3 * axes_shape[0]))
+
+
+    modes = {}
+    for i, row in enumerate(zip(coordinates, axes)):
+        #     print('row', row)
+        c_row, a_row = row
+        for mode, ax in zip(c_row, a_row):
+
+            axis_peak = mode
+            # if mode in ['x', 'y', 'z']:
+            #     data_labels = ['x', 'y', 'area']
+            # elif mode in ['r', '2r', 'm']:
+            #     data_labels = ['area', 'angle']
+
+            if mode in ['x', 'y']:
+                data_labels = [mode]
+            elif mode in ['r', '2r', 'm', 'z']:
+                data_labels = ['area']
+
+            for data_label in data_labels:
+
+                # as a proxy for the z mode we use the area
+                if data_label == 'area':
+                    d = data[feature + ' a'] * data[feature + ' b'] * np.pi
+                else:
+                    d = data[feature + ' ' + data_label]
+
+                d = d - np.mean(d)  # get rid of DC off set
+
+                # set the frequency range to be +- freq_window/2 around the peak
+                frequency_range = (max(0, annotation_dict[axis_peak][0] - 0.5 * freq_window),
+                                   min(annotation_dict[axis_peak][0] + 0.5 * freq_window, 0.5 * info['info']['FrameRate']))
+
+                f, p = power_spectral_density(d, time_step, frequency_range=frequency_range)
+
+                if n_avrg is not None:
+                    f, p = avrg(f, n=n_avrg), avrg(p, n=n_avrg)
+
+                if normalize:
+                    p = p / max(p)
+                if plot_type == 'log':
+                    ax.loglog(f, p, linewidth=3)
+                elif plot_type == 'lin':
+                    ax.plot(f, p, linewidth=3)
+                elif plot_type == 'semilogy':
+                    ax.semilogy(f, p, linewidth=3)
+                elif plot_type == 'semilogx':
+                    ax.semilogx(f, p, linewidth=3)
+
+            # line_length = 0.2
+            # # trying to get better lengths for log plots but doesn't work...
+            # # if plot_type in ['lin', 'semilogx']:
+            # #     line_length = 0.2
+            # #
+            # # elif plot_type in ['log', 'semilogy']:
+            # #     line_length = 1-0.8*min(p / max(p))
+            #
+            # if len(annotation_dict) > 0:
+            #     annotate_frequencies(ax, annotation_dict, x_off=0.1*freq_window, line_length=line_length, higher_harm=1)
+            # #         annotate_frequencies(ax, annotation_dict, higher_harm=1)
+
+            modes[mode] = f[np.argmax(p)]
+            if normalize:
+                ax.set_ylabel(mode + ' (norm)')
+            else:
+                ax.set_ylabel(mode)
+            ax.set_xlim((min(f), max(f)))
+
+            if i == len(coordinates) - 1:
+                ax.set_xlabel('frequency (Hz)')
+
+    return fig
 
 def plot_psd_vs_time(x, time_step, start_frame = 0, window_length= 1000, end_frame = None,full_spectrum=True, frequency_range= None, ax = None, plot_avrg = False, verbose = False):
     """
@@ -68,13 +191,13 @@ def plot_psd_vs_time(x, time_step, start_frame = 0, window_length= 1000, end_fra
 
 
     # reshape the timetrace such that each row is a window
-    X = x[start_frame:start_frame+window_length*N_windows].reshape(N_windows, window_length)
+    X = x[start_frame:start_frame+window_length*N_windows].values.reshape(N_windows, window_length)
     P = []
     # c = 0
     for x in X:
         # c+=1
         if full_spectrum:
-            f, p =  power_spectral_density(x, time_step, frequency_range=None)
+            f, p = power_spectral_density(x, time_step, frequency_range=None)
         else:
             f, p = power_spectral_density(x, time_step, frequency_range=frequency_range)
         P.append(p)
@@ -182,7 +305,7 @@ def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1
                 if id in window_ids:
 
                     if full_spectrum:
-                        f, p =  power_spectral_density(x, time_step, frequency_range=None)
+                        f, p = power_spectral_density(x, time_step, frequency_range=None)
                     else:
                         f, p = power_spectral_density(x, time_step, frequency_range=frequency_range)
                     P.append(p)
@@ -197,7 +320,7 @@ def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1
         ax.semilogy(f, p, '-')
     else:
         for p, id in zip(P, window_ids):
-            ax.semilogy(f, p, '-', label = id)
+            ax.semilogy(f, p, '-', label=id)
         plt.legend(loc=(1, 0))
 
     if not frequency_range is None:

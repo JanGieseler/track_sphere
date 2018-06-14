@@ -11,6 +11,8 @@ from copy import deepcopy
 from track_sphere.utils import *
 import matplotlib.pyplot as plt
 
+from track_sphere.read_write import load_video_info
+
 # def optical_flow_features_surf(image_old, image, features, parameters):
 #     """
 #     tracks motion features from image_old to image
