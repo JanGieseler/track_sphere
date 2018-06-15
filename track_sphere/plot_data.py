@@ -8,7 +8,7 @@ from track_sphere.read_write import grab_frame
 from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle
 from track_sphere.plot_utils import annotate_frequencies
 
-def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg=None, plot_type = 'lin', verbose=False, normalize=True, return_data=False):
+def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg=None, plot_type = 'lin', verbose=False, normalize=True, return_data=False, axes = None):
     """
 
     Args:
@@ -28,8 +28,14 @@ def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg
 
     time_step = 1. / info['info']['FrameRate']
     axes_shape = np.shape(coordinates)
-    fig, axes = plt.subplots(axes_shape[0], axes_shape[1], sharey=False, sharex=False,
-                             figsize=(8 * axes_shape[1], 3 * axes_shape[0]))
+
+    if axes is None:
+        fig, axes = plt.subplots(axes_shape[0], axes_shape[1], sharey=False, sharex=False,
+                                 figsize=(8 * axes_shape[1], 3 * axes_shape[0]))
+    else:
+        fig = None
+
+
 
 
     if return_data:
@@ -69,9 +75,11 @@ def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg
             elif plot_type == 'semilogx':
                 ax.semilogx(f, p, linewidth=3)
 
-            if len(annotation_dict) > 0:
-                annotate_frequencies(ax, annotation_dict, higher_harm=1)
-            #         annotate_frequencies(ax, annotation_dict, higher_harm=1)
+            # if we plot on a preexisting plot, don't add labels
+            if fig is not None:
+                if len(annotation_dict) > 0:
+                    annotate_frequencies(ax, annotation_dict, higher_harm=1)
+                #         annotate_frequencies(ax, annotation_dict, higher_harm=1)
 
             modes[c] = f[np.argmax(p)]
 
@@ -87,12 +95,10 @@ def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg
                 p_list.append(p)
 
     if return_data:
-        return fig, {'frequencies': f, 'spectra':p_list, 'coordinates':coordinates}
+        return fig, axes, {'frequencies': f, 'spectra':p_list, 'coordinates':coordinates}
     else:
-        return fig
-            # ax2.set_xlabel('time (s)')
-    # ax2.set_ylabel('amplitude (px)')
-    # annotate_frequencies(ax, annotation_dict, 0.5, higher_harm=2)
+        return fig, axes
+
 
 def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_avrg=None, plot_type='lin', normalize=True, axes=None, verbose=False):
     for mode in ['x', 'y', 'z', '2r', 'r']:
