@@ -1,3 +1,6 @@
+# This batch script extracts the position information from video files and writes them into a .csv file
+# meta data is also saved into a .json file
+
 import os
 from glob import glob
 from track_sphere.extract_data_opencv import *
@@ -7,7 +10,9 @@ from track_sphere.extract_data_opencv import *
 case = 'extract all 20180607_Sample_6_bead_1'
 case = 'create video relevitate'
 
-
+################################################################################
+#### define parameters for each case
+################################################################################
 if case == 'extract all 20180607_Sample_6_bead_1':
     ################################################################################
     ## method settings ###

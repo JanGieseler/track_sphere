@@ -5,7 +5,7 @@ from matplotlib.patches import Rectangle, Circle
 import numpy as np
 from track_sphere.read_write import grab_frame
 
-from track_sphere.utils import power_spectral_density, avrg
+from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle
 from track_sphere.plot_utils import annotate_frequencies
 
 def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg=None, plot_type = 'lin', verbose=False, normalize=True, return_data=False):
@@ -98,6 +98,13 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
     for mode in ['x', 'y', 'z', '2r', 'r']:
         assert mode in annotation_dict
 
+    if normalize is True:
+        normalize = 'max_peak'
+    elif normalize is False:
+        normalize = 'false'
+
+    assert normalize in ['max_peak', 'false', 'std_dev']
+
     coordinates = [['x', 'y', 'z'], ['r', '2r', 'm']]
     feature = 'ellipse'
 
@@ -146,6 +153,10 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
 
                 d = d - np.mean(d)  # get rid of DC off set
 
+
+                if normalize == 'std_dev':
+                    d /= np.std(d)
+
                 # set the frequency range to be +- freq_window/2 around the peak
                 frequency_range = (max(0, annotation_dict[axis_peak][0] - 0.5 * freq_window),
                                    min(annotation_dict[axis_peak][0] + 0.5 * freq_window, 0.5 * info['info']['FrameRate']))
@@ -155,7 +166,7 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
                 if n_avrg is not None:
                     f, p = avrg(f, n=n_avrg), avrg(p, n=n_avrg)
 
-                if normalize:
+                if normalize == 'max_peak':
                     p = p / max(p)
 
                 if plot_type == 'log':
@@ -180,8 +191,10 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
             # #         annotate_frequencies(ax, annotation_dict, higher_harm=1)
 
             modes[mode] = f[np.argmax(p)]
-            if normalize:
-                ax.set_ylabel(mode + ' (norm)')
+            if normalize == 'max_peak':
+                ax.set_ylabel(mode + ' (norm max peak)')
+            elif normalize == 'std_dev':
+                ax.set_ylabel(mode + ' (norm std)')
             else:
                 ax.set_ylabel(mode)
             ax.set_xlim((min(f), max(f)))
@@ -191,6 +204,64 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
 
     return fig, axes
 
+
+def plot_rotations_vs_time(data, time_step, zoom_frames=None, n_avrg=20, axes=None, verbose=False):
+    """
+    plots a zoom in of the unwrapped angle, the full time trace and the distribution histogram of frequencies
+    which are calculated from the derivative of the phase
+    Args:
+        data:
+        time_step:
+        zoom_frames:
+        n_avrg:
+        axes:
+        verbose:
+
+    Returns:
+
+    """
+    rot_angle = np.unwrap(data['ellipse angle'], discont=get_wrap_angle(data['ellipse angle']))
+    if zoom_frames is None:
+        min_frame, max_frame = 0, 1000
+    else:
+        min_frame, max_frame = zoom_frames
+
+    frames = np.arange(min_frame, max_frame)
+    t = time_step * frames
+    t2 = time_step * np.arange(len(data))
+
+    rot_angle_avrg = avrg(rot_angle, n=n_avrg)
+    freqs = np.diff(rot_angle_avrg) / (360 * time_step * n_avrg)
+
+    freq_estimate = np.mean(freqs)
+
+    if axes is None:
+        fig, axes = plt.subplots(1, 3, sharey=False, sharex=False, figsize=(18, 4))
+    else:
+        fig = None
+
+    ax1, ax2, ax3 = axes
+    ax1.plot(t, rot_angle[frames] / 360)
+    ax2.plot(t2, 1e-3 * rot_angle / 360, label='{:0.2f} Hz'.format(freq_estimate))
+
+    x = ax3.hist(freqs, log=True, bins=50, density=True, alpha=0.3)
+    #     m, s = np.mean(rot_freq), np.std(rot_freq)
+    #     plt.plot(a, rv.pdf(a), lw = 3)
+    #     rv = norm(loc = m, scale = s)
+    #     plt.ylim([1e-6, 5e-2])
+
+    if fig is None:
+        ax1.set_title('zoom')
+        ax2.set_title('full')
+
+        ax1.set_ylabel('rotations')
+        ax2.set_ylabel('rotations (x 1000)')
+        ax3.set_ylabel('probability density')
+        ax1.set_xlabel('time (s)')
+        ax2.set_xlabel('time (s)')
+        ax3.set_xlabel('rotation freq. (Hz)')
+
+    return fig, axes
 
 def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=None, full_spectrum=True,
                      frequency_range=None, ax=None, plot_avrg=False, verbose=False, return_data=False):

@@ -1,5 +1,6 @@
 import os
 import yaml
+import json
 import pandas as pd
 import cv2 as cv
 
@@ -25,7 +26,7 @@ def load_video_info(filename):
 
     data = data['media']['track']
     # select the relevant paramters
-    info = {key: data[0][key] for key in ['FrameRate', 'FileSize', 'Duration']}
+    info = {key: data[0][key] for key in ['FrameRate', 'FileSize', 'Duration', 'File_Modified_Date', 'File_Modified_Date_Local']}
     info.update({key: data[1][key] for key in ['Width', 'Height', 'BitDepth', 'CodecID', 'FrameCount']})
 
     # now convert to numbers
@@ -71,10 +72,7 @@ def load_time_trace(filename, source_folder_positions=None, methods=[], verbose=
         # reconstruct the name of the json file with the metadata
         filepath = os.path.join(source_folder_positions, filename.split('-' + methods[0])[0]) + '.avi'
 
-    assert len(methods)>0
-
-
-
+    assert len(methods) > 0
 
     if methods is []:
         print('define method!')
@@ -88,6 +86,8 @@ def load_time_trace(filename, source_folder_positions=None, methods=[], verbose=
 
         if m == 0:
             # load data
+            # index_col=0 produces a warning not quite clear why
+            # check: https://stackoverflow.com/questions/48818335/why-pandas-read-csv-issues-this-warning-elementwise-comparison-failed
             data = pd.read_csv(filepath.replace('.avi', '-{:s}.dat'.format(method)), index_col=0)
             info['info'] = info_m['info']
         else:
@@ -102,6 +102,58 @@ def load_time_trace(filename, source_folder_positions=None, methods=[], verbose=
         print('data shape is: ', data.shape)
 
     return data, info
+
+
+def update_info(filename, key, value, folder_positions=None, dataset='ellipse', verbose=False):
+    """
+    loads the info file that is created together with the position data and updates or adds values to the 'dataset',
+    e.g. the mode frequencies
+    Args:
+        filename: name of info file (.json) either just filename then need to provide also folder_positions or full filepath
+        key: name of the parameter to be updated / added
+        value: value of the parameter to be updated / added
+        folder_positions: (optional) folder of where info file is located
+        dataset: name of dataset where to updat / add value
+        verbose: if True print outputs
+
+    Returns: None
+
+    """
+
+    # we want the json file, in case we receive the .dat file
+    filename = filename.split('.')[0] + '.json'
+
+    if folder_positions is not None:
+        filename = os.path.join(folder_positions, filename)
+
+    #check that file exists
+    assert os.path.exists(filename)
+
+    with open(filename, 'r') as infile:
+        info = yaml.safe_load(infile)
+
+    if dataset in info:
+        if verbose:
+            if key in info[dataset]:
+                print('updating ' + dataset + '.' + key + ': ' + str(info[dataset][key]) + ' => '+str(value))
+            else:
+                print('adding ' + dataset + '.' + key + ': ' + str(value))
+        info[dataset][key] = value
+
+    else:
+        info.update({dataset: {key: value}})
+
+    # write back to file
+    # with open(filename.replace('.json','.txt'), 'w') as outfile:
+    #     tmp = json.dump(info, outfile, indent=4)
+    with open(filename, 'w') as outfile:
+        tmp = json.dump(info, outfile, indent=4)
+
+    if verbose:
+        print('updated ' + filename)
+
+
+
 
 
 def grab_frame(file_in, frame_id=0, verbose=False):

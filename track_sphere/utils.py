@@ -144,6 +144,46 @@ def avrg(x, n=10):
     m = int(len(x)/n)
     return np.mean(x[0:n*m].reshape([m, n]), axis=1)
 
+def get_wrap_angle(angles, bins=2000, navrg=50):
+    """
+    calcuates the optimal wrap angle based on the histogram of the differential of the angles
+    the histogram has a peak around zero and 180 deg
+    Args:
+        angles:
+        bins:
+        navrg:
+
+    Returns: optimal wrap angle
+
+    """
+    x = np.histogram(abs(np.diff(angles)), bins=bins)
+    x0 = avrg(x[0], n=navrg)
+    x1 = avrg(x[1], n=navrg)
+    wrap_angle = x1[np.argmin(x0)]
+    return wrap_angle
+
+
+def get_rotation_frequency(data, info, n_avrg=20):
+    """
+    calculate the rotation frequency from a time trace of angle data, the assumption is that the rotation is constant
+    Args:
+        data:
+        info:
+
+    Returns:
+
+    """
+    time_step = 1. / info['info']['FrameRate']
+    rot_angle = np.unwrap(data['ellipse angle'], discont=get_wrap_angle(data['ellipse angle']))
+    freqs = np.diff(rot_angle) / (360 * time_step)
+
+    rot_angle = avrg(rot_angle, n=n_avrg)
+    freqs = np.diff(rot_angle) / (360 * time_step * n_avrg)
+
+    return np.mean(freqs), np.std(freqs), info['info']['File_Modified_Date_Local'], n_avrg
+
+
+
 if __name__ == '__main__':
     folder_in = '../example_data/'
     filename_in = '20171207_magnet.avi'
