@@ -352,7 +352,7 @@ def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=
     ax[ax_id].set_ylabel('time (s)')
 
     if return_data:
-        return fig, ax, {'spectra':P, 'frequencies':f}
+        return fig, ax, {'spectra': P, 'frequencies': f}
     else:
         return fig, ax
 

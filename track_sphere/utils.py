@@ -4,6 +4,7 @@ import cv2 as cv
 # import colors
 import pandas as pd
 import datetime
+from glob import glob
 
 
 
@@ -182,7 +183,20 @@ def get_rotation_frequency(data, info, n_avrg=20):
 
     return np.mean(freqs), np.std(freqs), info['info']['File_Modified_Date_Local'], n_avrg
 
+def get_position_file_names(source_folder_positions, method):
+    """
 
+    Args:
+        source_folder_positions: name of folder
+        method: extraction method for position information
+
+    Returns: all the filenames in the folder source_folder_positions
+
+    """
+    # get all the files and sort them by the run number
+    position_file_names = sorted([os.path.basename(f) for f in glob(source_folder_positions + '*-'+method+'.dat')])
+    position_file_names = sorted(position_file_names, key=lambda f: int(f.split('-')[0].split('Bead_')[1].split('_')[0]))
+    return position_file_names
 
 if __name__ == '__main__':
     folder_in = '../example_data/'

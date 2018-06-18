@@ -175,6 +175,35 @@ def ffmpeg_segment_video(file_in, segmentation_frames=None):
     print('wrote:\n{:s}'.format(file_out))
 
 
+def extract_video_info(filepath, media_info_file_path='C:/Program Files/MediaInfo/CLI/', verbose=False):
+    """
+    uses the commanline interface from media_info to extract metadata from a video file and writes it to a json file
+    with the same name as the video file (except for the file extension)
+    Args:
+        filepath: path to video file
+        media_info_file_path: location of .exe file of mediainfo CLI
+            (download here: https://mediaarea.net/en/MediaInfo/Download/Windows)
+
+    Returns:
+
+    """
+
+
+    # video_folder = 'Z:/Lab/Lev/videos/20180607\_Sample\_6\_bead\_1'
+    # video_file = '20180607_Sample_6_Bead_3.avi'
+
+    # filepath = os.path.join(video_folder, video_file)
+
+    media_info_file_path = media_info_file_path.replace(' ', '^ ') # in windows spaces have to be escaped with ^
+
+    cmd_string = media_info_file_path + 'MediaInfo.exe --Output=JSON '
+    cmd_string += filepath + ' > ' + filepath.replace('.avi', '.json')
+
+    cmd_string = cmd_string.replace('\_', '_')  # for command line output we actually don't want the escape
+    if verbose:
+        print(cmd_string)
+    x = os.system(cmd_string)
+
 
 
 if __name__ == '__main__':

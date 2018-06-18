@@ -103,7 +103,7 @@ def load_time_trace(filename, source_folder_positions=None, methods=[], verbose=
 
     return data, info
 
-def load_info(filename, folder_positions=None):
+def load_info(filename, folder_positions=None, verbose=False, return_filname=False):
     """
     loads the info file that is created together with the position data
     Args:
@@ -121,12 +121,17 @@ def load_info(filename, folder_positions=None):
         filename = os.path.join(folder_positions, filename)
 
     #check that file exists
-    assert os.path.exists(filename)
+    if verbose and not os.path.exists(filename):
+        print('filename', filename)
+    assert os.path.exists(filename), filename
 
     with open(filename, 'r') as infile:
         info = yaml.safe_load(infile)
 
-    return info
+    if return_filname:
+        return info, filename
+    else:
+        return info
 
 
 def update_info(filename, key, value, folder_positions=None, dataset='ellipse', verbose=False):
@@ -146,10 +151,7 @@ def update_info(filename, key, value, folder_positions=None, dataset='ellipse', 
     """
 
 
-    # we want the json file, in case we receive the .dat file
-    filename = filename.split('.')[0] + '.json'
-
-    info = load_info(filename, folder_positions=None)
+    info, filename = load_info(filename, folder_positions=folder_positions, verbose=verbose, return_filname=True)
 
     if dataset in info:
         if verbose:
