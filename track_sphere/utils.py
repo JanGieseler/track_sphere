@@ -229,31 +229,26 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
 
     x = data['ellipse angle'].as_matrix()
 
-    counts, bins, _ = axes[1].hist(x, bins=100, log=True, density=False, alpha=0.3)
-
+    counts, bins = np.histogram(x, bins=100, density=False)
 
     if exclude_percent is not None:
         # get the min and max angle from the histogram
         angle_min = min(bins[:-1][counts / np.max(counts) > 0.1])
         angle_max = max(bins[:-1][counts / np.max(counts) > 0.1])
 
-    angle_jump = (angle_max - angle_min) / 2
+    # if jumps are bigger than 20% then say that this is a discontinuity
+    angle_jump = (angle_max - angle_min) / 5
     time_step = 1. / info['info']['FrameRate']
-
-    def boolean_selector(x, direction):
-        if direction=='left':
-            return
 
     # select all the angles between angle_min and angle_max
     boolean_selector = np.logical_and(x >= angle_min, x <= angle_max)
 
     # figure out the orientation
-    left = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) < 0)
-    right = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) > 0)
+    left = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) < angle_jump)
+    right = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) > angle_jump)
+    print(sum(left), sum(right))
     boolean_selector = left if sum(left)>sum(right) else right
 
-
-    boolean_selector = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) < 0)
 
     selector = np.where(boolean_selector)[0]
     # find all the values where data is not continuous and arrange in pairs
@@ -283,11 +278,17 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
 
     # freqs = [linfit(i)[1] for i in range_pairs]
 
+    return_dict = {'mean':np.mean(freqs), 'std': np.std(freqs),
+                   'exclude_percent':exclude_percent,
+                   'angle_min':angle_min, 'angle_max':angle_max
+                   }
+
     if return_figure:
         t = time_step * np.arange(nmax)
-        axes[1].hist(x[selector], bins=bins, log=True, density=False, alpha=0.3)
-        _, bins, _ = axes[2].hist(np.diff(x) / time_step / 360, bins=100, log=True, density=False, alpha=0.3)
-        axes[2].hist(freqs, bins=bins, log=True, density=False, alpha=0.3)
+        counts, bins, _ = axes[1].hist(x, bins=100, log=True, alpha=0.3)
+        axes[1].hist(x[selector], bins=bins, log=True, alpha=0.3)
+        _, bins, _ = axes[2].hist(np.diff(x) / time_step / 360, bins=100, log=True, alpha=0.3)
+        axes[2].hist(freqs, bins=bins, log=True, alpha=0.3)
 
         axes[0].plot(t, x[0:nmax], 'o')
         for i in range_pairs:
@@ -315,9 +316,9 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
         axes[0].plot([0, time_step * nmax], [angle_min, angle_min], 'k--')
         axes[0].plot([0, time_step * nmax], [angle_max, angle_max], 'k--')
 
-        return fig, axes, np.mean(freqs), np.std(freqs)
+        return fig, axes, return_dict
     else:
-        return np.mean(freqs), np.std(freqs)
+        return return_dict
 
 def get_position_file_names(source_folder_positions, method):
     """

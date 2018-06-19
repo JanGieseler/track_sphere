@@ -28,7 +28,8 @@ position_file_names = get_position_file_names(source_folder_positions, method=me
 # position_file_names = sorted([os.path.basename(f) for f in glob(source_folder_positions + '*-'+method+'.dat')])
 # position_file_names = sorted(position_file_names, key=lambda f: int(f.split('-')[0].split('Bead_')[1].split('_')[0]))
 
-position_file_names = position_file_names[62:]
+# position_file_names = position_file_names[62:]
+position_file_names = position_file_names[7:16]
 position_file_names
 
 axes = None
@@ -43,30 +44,34 @@ for i, filename in enumerate(position_file_names):
     # ================================================
     # ==== method 1 = get the frequency from the phase
     # ================================================
-    # data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
-    # ret = get_rotation_frequency(data, info, n_avrg=20)
-    #
-    # update_info(filename, 'rotation_freq', {k:v for k, v in zip(['mean', 'std', 'time', 'n_avrg'], ret)}
-    # , folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
+    data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
+    fig, axes, freqs = get_rotation_frequency(data, info, return_figure=True, exclude_percent=0.2, nmax=130)
+
+    # save figure
+    image_filename = os.path.join(image_folder, filename.replace('.dat', '-r-phase.png'))
+    fig.savefig(image_filename)
+    plt.close(fig)
+
+    update_info(filename, 'rotation_freq', freqs, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
 
     # ================================================
     # ==== method 2 = get the frequency from fft
     # ================================================
 
-    mode = 'r'
-    data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
-    # retrieve frequencies and figure
-    fig, axes, freqs = get_mode_frequency(data, mode, info, return_figure=True,
-                                          interval_width=interval_width,
-                                          interval_width_zoom=interval_width_zoom,
-                                          fo=fo)
-
-    # save figure
-    image_filename = os.path.join(image_folder, filename.replace('.dat', '-' + mode + '-fft.png'))
-    fig.savefig(image_filename)
-    plt.close(fig)
-
-    # update info (json) file
-    for key, value in freqs.items():
-        print(key, value)
-        update_info(filename, key, value, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
+    # mode = 'r'
+    # data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
+    # # retrieve frequencies and figure
+    # fig, axes, freqs = get_mode_frequency(data, mode, info, return_figure=True,
+    #                                       interval_width=interval_width,
+    #                                       interval_width_zoom=interval_width_zoom,
+    #                                       fo=fo)
+    #
+    # # save figure
+    # image_filename = os.path.join(image_folder, filename.replace('.dat', '-' + mode + '-fft.png'))
+    # fig.savefig(image_filename)
+    # plt.close(fig)
+    #
+    # # update info (json) file
+    # for key, value in freqs.items():
+    #     print(key, value)
+    #     update_info(filename, key, value, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
