@@ -4,6 +4,7 @@ import cv2 as cv
 # import colors
 import pandas as pd
 import datetime
+import matplotlib.pyplot as plt
 from glob import glob
 
 
@@ -145,43 +146,117 @@ def avrg(x, n=10):
     m = int(len(x)/n)
     return np.mean(x[0:n*m].reshape([m, n]), axis=1)
 
-def get_wrap_angle(angles, bins=2000, navrg=50):
+def get_wrap_angle(angles, bins=2000, navrg=50, n_smooth_dist = 50, plot_distibutions_axes=None):
     """
     calcuates the optimal wrap angle based on the histogram of the differential of the angles
     the histogram has a peak around zero and 180 deg
     Args:
         angles:
-        bins:
-        navrg:
+        bins: number of bins in histogram
+        navrg: number of points used to smoothen the data
+        n_smooth_dist: number of avrg to smoothen distribution data
 
     Returns: optimal wrap angle
 
     """
-    x = np.histogram(abs(np.diff(angles)), bins=bins)
-    x0 = avrg(x[0], n=navrg)
-    x1 = avrg(x[1], n=navrg)
+
+
+    x = np.histogram(abs(np.diff(avrg(angles, n=navrg))), bins=bins)
+
+
+    x0 = avrg(x[0], n_smooth_dist)
+    x1 = avrg(x[1], n_smooth_dist)
     wrap_angle = x1[np.argmin(x0)]
+
+
+    if plot_distibutions_axes is not None:
+        plot_distibutions_axes.semilogy(x1, x0/np.sum(x0))
+
     return wrap_angle
 
 
-def get_rotation_frequency(data, info, n_avrg=20):
+def get_rotation_frequency(data, info, n_avrg=20 ,n_avrg_unwrapped=20, wrap_angle=None):
     """
     calculate the rotation frequency from a time trace of angle data, the assumption is that the rotation is constant
     Args:
         data:
         info:
+        n_avrg: nmber of points used for smoothing the data
+        wrap_angle: if None find wrap_angle automatically otherwise wrap angles at this value
 
     Returns:
 
     """
+
+    if isinstance(info, dict):
+        time_step = 1. / info['info']['FrameRate']
+        timestamp = info['info']['File_Modified_Date_Local']
+    else:
+        time_step = info
+        timestamp = None
+
+    if wrap_angle is None:
+        wrap_angle = get_wrap_angle(data['ellipse angle'], navrg=n_avrg)
+    rot_angle = avrg(data['ellipse angle'], n=n_avrg)
+    rot_angle = np.unwrap(rot_angle, discont=wrap_angle)
+    rot_angle = avrg(rot_angle, n=n_avrg_unwrapped)
+    freqs = np.diff(rot_angle) / (360 * time_step * n_avrg_unwrapped)
+
+    return np.mean(freqs), np.std(freqs), timestamp, n_avrg, n_avrg_unwrapped
+
+
+def get_rotation_frequency2(data, info, return_figure=False, angle_min=50, angle_max=130, nmax=100, axes=None):
+    """
+    calculate the rotation frequency from a time trace of angle data, the assumption is that the rotation is constant
+    Args:
+        data:
+        info:
+        return_figure:
+        angle_min:
+        angle_max:
+        nmax:
+        axes:
+
+    Returns:
+
+    """
+
+    x = data['ellipse angle'].as_matrix()
     time_step = 1. / info['info']['FrameRate']
-    rot_angle = np.unwrap(data['ellipse angle'], discont=get_wrap_angle(data['ellipse angle']))
-    freqs = np.diff(rot_angle) / (360 * time_step)
 
-    rot_angle = avrg(rot_angle, n=n_avrg)
-    freqs = np.diff(rot_angle) / (360 * time_step * n_avrg)
+    # select all the angles between angle_min and angle_max
+    selector = np.where(np.logical_and(x >= angle_min, x <= angle_max))[0]
+    # select the points where the data is continuous, so we don't get spurious freq when we take the derivative
+    selector2 = np.where(np.diff(selector) == 1)[0]
+    # check that all the differences are really just 1
+    assert np.sum(np.diff(selector)[selector2]) - len(selector2) == 0
 
-    return np.mean(freqs), np.std(freqs), info['info']['File_Modified_Date_Local'], n_avrg
+    freqs = np.diff(x[selector])[selector2] / time_step / 360
+
+    if return_figure:
+        if axes is None:
+            fig, axes = plt.subplots(1, 3, sharey=False, sharex=False, figsize=(8 * 3, 8))
+        else:
+            fig=None
+        axes[0].plot(time_step * np.arange(nmax), x[0:nmax], 'o')
+        axes[1].hist(x, bins=100, log=True, density=True, alpha=0.3)
+        axes[2].hist(np.diff(x) / time_step / 360, bins=100, log=True, density=True, alpha=0.3)
+
+
+        axes[0].plot(time_step * selector[0:nmax], x[selector[0:nmax]], 'x')
+        axes[1].hist(x[selector], bins=100, log=True, density=True, alpha=0.3)
+        axes[2].hist(freqs, bins=100, log=True, density=True, alpha=0.3)
+
+        axes[0].set_xlabel('time (s)')
+        axes[1].set_title('angle (deg)')
+        axes[1].set_xlabel('angle (deg)')
+        axes[1].set_title('probability density')
+        axes[2].set_xlabel('freq (Hz)')
+        axes[2].set_title('probability density')
+
+        return fig, axes, np.mean(freqs), np.std(freqs)
+    else:
+        return np.mean(freqs), np.std(freqs)
 
 def get_position_file_names(source_folder_positions, method):
     """
@@ -190,13 +265,79 @@ def get_position_file_names(source_folder_positions, method):
         source_folder_positions: name of folder
         method: extraction method for position information
 
-    Returns: all the filenames in the folder source_folder_positions
+    Returns: all the filenames in the folder source_folder_positions sorted by run id
 
     """
     # get all the files and sort them by the run number
     position_file_names = sorted([os.path.basename(f) for f in glob(source_folder_positions + '*-'+method+'.dat')])
     position_file_names = sorted(position_file_names, key=lambda f: int(f.split('-')[0].split('Bead_')[1].split('_')[0]))
     return position_file_names
+
+
+def get_mode_frequency(data, mode, info, return_figure=False, interval_width=None, interval_width_zoom=0.1, fo=None,
+                       verbose=False):
+
+    """
+
+    Args:
+        data: data as a pandas frame obtained from ellipse fitting
+        mode: one of the modes, x y y r
+        info: info file
+        return_figure: if true return figure and axes objects
+        interval_width: witdth of range where to look for peak, if None take center of full range
+        interval_width_zoom:(for plotting)
+        fo: center of range where to look for peak, if None take center of full range
+        verbose:
+
+    Returns:
+
+    """
+    time_step = 1 / info['info']['FrameRate']
+    freqs = {}
+
+    if mode == 'r':
+        x = data['ellipse angle']
+    elif mode == 'z':
+        x = data['ellipse x'] * data['ellipse y'] * np.pi
+    else:
+        x = data['ellipse ' + mode]
+
+    f, p = power_spectral_density(x, time_step, frequency_range=None)
+
+    if interval_width is None:
+        frequency_range = (min(f), max(f))
+    else:
+        frequency_range = (fo - interval_width / 2, fo + interval_width / 2)
+
+    # pick the range of interest
+    bRange = np.all([(f > frequency_range[0]), (f < frequency_range[1])], axis=0)
+    F = f[bRange]
+    P = p[bRange]
+
+    freqs[mode] = F[np.argmax(P)]
+
+    if verbose:
+        print(mode + ': ', freqs[mode])
+
+    if return_figure:
+        ## plot
+        fig, axes = plt.subplots(1, 2, sharey=False, sharex=False, figsize=(8 * 3, 4))
+        axes[0].plot(F, P / max(P))
+
+        # zoom plot
+        frequency_range_zoom = (freqs[mode] - 0.5 * interval_width_zoom, freqs[mode] + 0.5 * interval_width_zoom)
+        bRange_zoom = np.all([(F >= frequency_range_zoom[0]), (F <= frequency_range_zoom[1])], axis=0)
+        F_zoom = F[bRange_zoom]
+        P_zoom = P[bRange_zoom]
+
+        axes[1].plot(F_zoom, P_zoom)
+        axes[1].set_title(mode + ' axis')
+
+        for a in axes:
+            a.set_xlabel('frequency (Hz)')
+        return fig, axes, freqs
+    else:
+        return freqs
 
 if __name__ == '__main__':
     folder_in = '../example_data/'
@@ -212,7 +353,6 @@ if __name__ == '__main__':
     file_in = os.path.join(folder_in, filename_in)
 
 
-    ffmpeg_segment_video(file_in, 100)
 
 
     # fix key

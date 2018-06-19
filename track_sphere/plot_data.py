@@ -5,7 +5,7 @@ from matplotlib.patches import Rectangle, Circle
 import numpy as np
 from track_sphere.read_write import grab_frame
 
-from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle
+from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle, get_rotation_frequency
 from track_sphere.plot_utils import annotate_frequencies
 
 def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg=None, plot_type = 'lin', verbose=False, normalize=True, return_data=False, axes = None):
@@ -16,7 +16,7 @@ def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg
         info:
         annotation_dict:
         freq_range:
-        n_avrg:
+        n_avrg: average n_avrg successive datapoint to smoothen the data
         plot_type:
 
     Returns:
@@ -101,7 +101,7 @@ def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg
 
 
 def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_avrg=None, plot_type='lin', normalize=True, axes=None, verbose=False):
-    for mode in ['x', 'y', 'z', '2r', 'r']:
+    for mode in ['x', 'y', 'z', '2r', 'r', 'm']:
         assert mode in annotation_dict
 
     if normalize is True:
@@ -211,7 +211,7 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
     return fig, axes
 
 
-def plot_rotations_vs_time(data, time_step, zoom_frames=None, n_avrg=20, axes=None, verbose=False):
+def plot_rotations_vs_time(data, time_step, t_max=None, n_avrg=20,n_avrg_unwrapped=20, axes=None, verbose=False, wrap_angle=None):
     """
     plots a zoom in of the unwrapped angle, the full time trace and the distribution histogram of frequencies
     which are calculated from the derivative of the phase
@@ -222,55 +222,83 @@ def plot_rotations_vs_time(data, time_step, zoom_frames=None, n_avrg=20, axes=No
         n_avrg:
         axes:
         verbose:
+        wrap_angle: if None find wrap_angle automatically otherwise wrap angles at this value
 
     Returns:
 
     """
-    rot_angle = np.unwrap(data['ellipse angle'], discont=get_wrap_angle(data['ellipse angle']))
-    if zoom_frames is None:
-        min_frame, max_frame = 0, 1000
-    else:
-        min_frame, max_frame = zoom_frames
 
-    frames = np.arange(min_frame, max_frame)
-    t = time_step * frames
-    t2 = time_step * np.arange(len(data))
 
-    rot_angle_avrg = avrg(rot_angle, n=n_avrg)
-    freqs = np.diff(rot_angle_avrg) / (360 * time_step * n_avrg)
+    if wrap_angle is None:
+        wrap_angle = get_wrap_angle(data['ellipse angle'], navrg=n_avrg)
 
-    freq_estimate = np.mean(freqs)
+
+    if t_max is None:
+        t_max = 0.1
+    min_frame, max_frame = 0, int(t_max/time_step/n_avrg)
+
 
     if axes is None:
-        fig, axes = plt.subplots(1, 3, sharey=False, sharex=False, figsize=(18, 4))
+        fig, axes = plt.subplots(2, 2, sharey=False, sharex=False, figsize=(18, 8))
     else:
         fig = None
 
-    ax1, ax2, ax3 = axes
+    ax1, ax2 = axes[0]
+    ax3, ax4 = axes[1]
+
+
+
+
+    rot_angle = data['ellipse angle']
+
+
+
+    rot_angle = avrg(rot_angle, n=n_avrg)
+    x = ax4.hist(rot_angle, log=True, bins=50, density=True, alpha=0.3)
+
+    rot_angle = np.unwrap(rot_angle, discont=wrap_angle)
+
+    frames = np.arange(min_frame, max_frame)
+    t = time_step * frames* n_avrg
     ax1.plot(t, rot_angle[frames] / 360)
-    ax2.plot(t2, 1e-3 * rot_angle / 360, label='{:0.2f} Hz'.format(freq_estimate))
+
+    t2 = time_step *n_avrg* np.arange(len(rot_angle))
+    ax2.plot(t2, 1e-3 * rot_angle / 360)
+
+
+    rot_angle = avrg(rot_angle, n=n_avrg_unwrapped)
+    freqs = np.diff(rot_angle) / (360 * time_step * n_avrg_unwrapped)
+
+    freq_estimate = np.mean(freqs)
+
+    if verbose:
+        print('{:d} datapoints'.format(len(rot_angle)))
+        print('freq_estimate {:0.3f}'.format(freq_estimate))
+        print('wrap angle {:0.2f} deg'.format(wrap_angle))
+
+
 
     x = ax3.hist(freqs, log=True, bins=50, density=True, alpha=0.3)
-    #     m, s = np.mean(rot_freq), np.std(rot_freq)
-    #     plt.plot(a, rv.pdf(a), lw = 3)
-    #     rv = norm(loc = m, scale = s)
-    #     plt.ylim([1e-6, 5e-2])
 
-    if fig is None:
-        ax1.set_title('zoom')
-        ax2.set_title('full')
 
-        ax1.set_ylabel('rotations')
-        ax2.set_ylabel('rotations (x 1000)')
-        ax3.set_ylabel('probability density')
-        ax1.set_xlabel('time (s)')
-        ax2.set_xlabel('time (s)')
-        ax3.set_xlabel('rotation freq. (Hz)')
+    # if fig is None:
+    ax1.set_title('zoom')
+    ax2.set_title('full')
+
+    ax1.set_ylabel('rotations')
+    ax2.set_ylabel('rotations (x 1000)')
+    ax3.set_ylabel('probability density')
+    ax1.set_xlabel('time (s)')
+    ax2.set_xlabel('time (s)')
+    ax3.set_xlabel('rotation freq. (Hz)')
+
+    ax4.set_xlabel('angles')
+    ax4.set_ylabel('prob density')
 
     return fig, axes
 
 def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=None, full_spectrum=True,
-                     frequency_range=None, ax=None, plot_avrg=False, verbose=False, return_data=False):
+                     frequency_range=None, ax=None, plot_avrg=False, verbose=False, return_data=False, plot_hist=False):
     """
 
     Args:
@@ -282,6 +310,7 @@ def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=
         full_spectrum: if true show full spectrum if false just mark the frequency range
         frequency_range: a tupple or list of two elements frange =[mode_f_min, mode_f_min] that marks a freq range on the plot if full_spectrum is False otherwise plot only the spectrum within the frequency_range
         plot_avrg: if true plot the time averaged PSD on top of the 2D plot
+        plot_hist: if true plot the hisogram of the max freq per window on top of the 2Dplot
 
     Returns:
 
@@ -316,6 +345,8 @@ def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=
         # print(c,len(p), np.min(p))
 
 
+
+
     time = np.arange(N_windows) * time_step * window_length
 
     xlim = [min(f), max(f)]
@@ -325,12 +356,19 @@ def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=
         if plot_avrg:
             fig, ax = plt.subplots(2, 1, sharex=True)
             ax_id = 1
+        elif plot_hist:
+            fig, ax = plt.subplots(1, 2)
+            ax_id = 0
         else:
             fig, ax = plt.subplots(1, 1)
             ax =[ax]
             ax_id = 0
 
-    ax[ax_id].pcolormesh(f, time, np.log(P))
+    if plot_hist:
+        ax[ax_id].pcolormesh(f, time, P)
+    else:
+        ax[ax_id].pcolormesh(f, time, np.log(P))
+
 
     # print(np.min(P, axis=1), len(np.min(P, axis=1)))
 
@@ -340,11 +378,20 @@ def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=
         ax[ax_id].plot([mode_f_max, mode_f_max], ylim, 'k--')
 
 
+
     if plot_avrg:
         pmean = np.mean(P, axis=0)
         ax[0].semilogy(f, pmean)
         ax[0].set_ylim([min(pmean), max(pmean)])
         ax[ax_id].set_ylim([min(pmean), max(pmean)])
+
+
+    elif plot_hist:
+        fmax = f[np.argmax(P, axis=1)]
+        ax[1].hist(fmax)
+        # ax[0].set_ylim([min(pmean), max(pmean)])
+        # ax[ax_id].set_ylim([min(pmean), max(pmean)])
+
 
     ax[ax_id].set_xlim(xlim)
     ax[ax_id].set_ylim(ylim)
@@ -495,6 +542,53 @@ def plot_tracking_error(data, methods):
     plt.title('Tracking error ({:s})'.format(channel))
     plt.ylabel('Error')
     plt.legend(loc = (1,0.5))
+
+
+def plot_rot_angle_dist(data, time_step, frame_max=100, n_avrg_list = [1,2, 4, 8, 16, 32, 64, 128]):
+    """
+    plots the distribution of angles as a function of binning length
+    Args:
+        data:
+        time_step:
+        source_folder_positions:
+        verbose:
+        frame_max:
+
+    Returns:
+
+    """
+
+    rot_angle = data['ellipse angle']
+
+    fig, axes = plt.subplots(2, 2, sharey=False, sharex=False, figsize=(20, 8))
+    res = []
+
+    for n_avrg in n_avrg_list:
+
+        rot_angle_avrg = avrg(rot_angle, n=n_avrg)
+
+        x = axes[0,0].hist(rot_angle_avrg, log=True, bins=50, density=True, alpha=0.3)
+
+        res.append(get_rotation_frequency(data, time_step, n_avrg=n_avrg)[0:2])
+
+        axes[1,0].plot(np.arange(int(frame_max/n_avrg))*time_step*n_avrg, rot_angle_avrg[:int(frame_max/n_avrg)], '.-', label='n_avrg={:d}'.format(n_avrg))
+
+    axes[0,1].semilogx(n_avrg_list, [abs(val[0]) for val in res],'o')
+    axes[0,1].set_xlabel('number of averages')
+    axes[0,1].set_ylabel('mean freq')
+
+    axes[1,1].loglog(n_avrg_list, [val[1] for val in res], 'o')
+    axes[1,1].set_xlabel('number of averages')
+    axes[1,1].set_ylabel('std dev freq')
+
+
+    axes[0,0].set_xlabel('angle (deg')
+    axes[0,0].set_ylabel('prob. density')
+
+    axes[1,0].set_xlabel('time (s)')
+    axes[1,0].set_ylabel('angle (deg)')
+
+    return fig, axes
 
 # OLD STUFF!!!!
 def plot_video_frame_old_stuff(file_path, frames, xy_position = None, gaussian_filter_width=None, xylim = None, roi = None, ax = None, radius = 3):

@@ -8,7 +8,7 @@ from track_sphere.extract_data_opencv import *
 
 # select one of the cases, case specific parameters are defined below
 case = 'extract all 20180607_Sample_6_bead_1'
-case = 'create video relevitate'
+# case = 'create video relevitate'
 
 ################################################################################
 #### define parameters for each case
@@ -40,13 +40,13 @@ if case == 'extract all 20180607_Sample_6_bead_1':
     ################################################################################
     #### for real data: 20180607_Sample6_bead_1
     ################################################################################
-    extraction_parameters['threshold'] = 'gaussian'
     extraction_parameters['blockSize'] = 51
-    extraction_parameters['c'] = 11
-    extraction_parameters['maxval'] = 255
     extraction_parameters['convex_hull'] = True
     #source folder
     folder_in = '../raw_data/20180607_Sample_6_bead_1/'
+
+
+
 
     video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
 elif case == 'create video relevitate':
@@ -87,7 +87,7 @@ elif case == 'create video relevitate':
 ################################################################################
 #### run the script
 ################################################################################
-for f in video_files:
+for f in video_files[25:]:
 
     filename_in = os.path.basename(f)
     print(filename_in)

@@ -174,7 +174,28 @@ def update_info(filename, key, value, folder_positions=None, dataset='ellipse', 
         print('updated ' + filename)
 
 
+def annotation_dict_from_info(filename, folder_positions=None):
+    """
+    construct the annotation dictinoary from the information stored in the info json file
+    Args:
+        filename:
+        folder_positions:
 
+    Returns:
+
+    """
+    annotation_dict = {}
+    info = load_info(filename, folder_positions=folder_positions)
+    if 'ellipse' in info:
+        for key, y_offset in zip(['x', 'y', 'z'], [0.6, 0.9, 0.6]):
+            if key in info['ellipse']:
+                annotation_dict[key] = [info['ellipse'][key], y_offset]
+
+    if 'rotation_freq' in info['ellipse']:
+        annotation_dict['r'] = [abs(info['ellipse']['rotation_freq']['mean']), 0.6]
+        annotation_dict['2r'] = [2 * abs(info['ellipse']['rotation_freq']['mean']), 0.9]
+
+    return annotation_dict
 
 
 def grab_frame(file_in, frame_id=0, verbose=False):

@@ -417,17 +417,18 @@ def check_method_parameters(parameters, info=None, verbose=False):
             if 'iterations' not in parameters['pre-processing']:
                 parameters['pre-processing']['iterations'] = 5
 
-        elif parameters['pre-processing']['process_method'] in ['adaptive_thresh_mean',
-                                                            'adaptive_thresh_gauss']:
+        elif parameters['pre-processing']['process_method'] in ['adaptive_thresh_mean', 'adaptive_thresh_gauss']:
             parameters['pre-processing']['maxval'] = 255
             parameters['pre-processing']['blockSize'] = 35
             parameters['pre-processing']['c'] = 11
 
         elif parameters['pre-processing']['process_method'] in ['threshold', 'thresh_triangle']:
             parameters['pre-processing']['maxval'] = 255
+
         elif parameters['pre-processing']['process_method'] == 'thresh_canny':
             parameters['pre-processing']['threshold_low'] = 50
             parameters['pre-processing']['threshold_high'] = 120
+
         elif parameters['pre-processing']['process_method'] == 'morph':
             parameters['pre-processing']['maxval'] = 255
             parameters['pre-processing']['blockSize'] = 35
