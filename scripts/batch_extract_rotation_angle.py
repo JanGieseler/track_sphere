@@ -28,7 +28,7 @@ position_file_names = get_position_file_names(source_folder_positions, method=me
 # position_file_names = sorted([os.path.basename(f) for f in glob(source_folder_positions + '*-'+method+'.dat')])
 # position_file_names = sorted(position_file_names, key=lambda f: int(f.split('-')[0].split('Bead_')[1].split('_')[0]))
 
-position_file_names = position_file_names[29:]
+position_file_names = position_file_names[62:]
 position_file_names
 
 axes = None

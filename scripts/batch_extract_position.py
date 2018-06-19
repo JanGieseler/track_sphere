@@ -87,7 +87,7 @@ elif case == 'create video relevitate':
 ################################################################################
 #### run the script
 ################################################################################
-for f in video_files[25:]:
+for f in video_files[46:]:
 
     filename_in = os.path.basename(f)
     print(filename_in)
@@ -104,18 +104,13 @@ for f in video_files[25:]:
         'export_parameters': export_parameters
     }
 
-
     filename_out = filename_in.replace('.avi', '-{:s}.avi'.format(method))
-
 
     file_in = os.path.join(folder_in, filename_in)
     file_out = os.path.join(folder_out, filename_out)
 
-
-
     if method == 'fit_blobs' and extraction_parameters['initial_points'] is None:
         extraction_parameters['initial_points'] = select_initial_points(file_in)
-
 
     extract_position_data(file_in, file_out=file_out, min_frame=min_frame, max_frame=max_frame, verbose=False,
                           parameters=parameters)

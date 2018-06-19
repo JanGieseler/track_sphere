@@ -175,7 +175,7 @@ def get_wrap_angle(angles, bins=2000, navrg=50, n_smooth_dist = 50, plot_distibu
     return wrap_angle
 
 
-def get_rotation_frequency(data, info, n_avrg=20 ,n_avrg_unwrapped=20, wrap_angle=None):
+def get_rotation_frequency_old(data, info, n_avrg=20 ,n_avrg_unwrapped=20, wrap_angle=None):
     """
     calculate the rotation frequency from a time trace of angle data, the assumption is that the rotation is constant
     Args:
@@ -205,7 +205,7 @@ def get_rotation_frequency(data, info, n_avrg=20 ,n_avrg_unwrapped=20, wrap_angl
     return np.mean(freqs), np.std(freqs), timestamp, n_avrg, n_avrg_unwrapped
 
 
-def get_rotation_frequency2(data, info, return_figure=False, angle_min=50, angle_max=130, nmax=100, axes=None):
+def get_rotation_frequency(data, info, return_figure=False, angle_min=50, angle_max=130, nmax=100, axes=None):
     """
     calculate the rotation frequency from a time trace of angle data, the assumption is that the rotation is constant
     Args:
@@ -225,34 +225,49 @@ def get_rotation_frequency2(data, info, return_figure=False, angle_min=50, angle
     time_step = 1. / info['info']['FrameRate']
 
     # select all the angles between angle_min and angle_max
-    selector = np.where(np.logical_and(x >= angle_min, x <= angle_max))[0]
-    # select the points where the data is continuous, so we don't get spurious freq when we take the derivative
-    selector2 = np.where(np.diff(selector) == 1)[0]
-    # check that all the differences are really just 1
-    assert np.sum(np.diff(selector)[selector2]) - len(selector2) == 0
 
-    freqs = np.diff(x[selector])[selector2] / time_step / 360
+    # select all the angles between angle_min and angle_max
+    selector = np.where(np.logical_and(x >= angle_min, x <= angle_max))[0]
+    range_pairs = [i for i, df in enumerate(np.diff(selector)) if df != 1]  # find all the values where data is not continuous
+    range_pairs = np.hstack([-1, range_pairs, len(selector) - 1])  # add first and last elements
+    range_pairs = np.vstack([range_pairs[:-1] + 1, range_pairs[1:]]).T
+    # remove the elements where there is only a single value
+    range_pairs = [i for i in range_pairs if np.diff(i) > 1]
+
+    # now calculate the freq from the slope of the continuous ranges of data
+    freqs = [np.mean(np.diff(x[range(selector[i][0], selector[i][1])])) / time_step / 360 for i in range_pairs]
 
     if return_figure:
         if axes is None:
             fig, axes = plt.subplots(1, 3, sharey=False, sharex=False, figsize=(8 * 3, 8))
         else:
             fig=None
-        axes[0].plot(time_step * np.arange(nmax), x[0:nmax], 'o')
-        axes[1].hist(x, bins=100, log=True, density=True, alpha=0.3)
-        axes[2].hist(np.diff(x) / time_step / 360, bins=100, log=True, density=True, alpha=0.3)
 
+        axes[1].hist(x, bins=100, log=True, density=False, alpha=0.3)
+        axes[2].hist(np.diff(x) / time_step / 360, bins=100, log=True, density=False, alpha=0.3)
 
-        axes[0].plot(time_step * selector[0:nmax], x[selector[0:nmax]], 'x')
-        axes[1].hist(x[selector], bins=100, log=True, density=True, alpha=0.3)
-        axes[2].hist(freqs, bins=100, log=True, density=True, alpha=0.3)
+        axes[1].hist(x[selector], bins=100, log=True, density=False, alpha=0.3)
+        axes[2].hist(freqs, bins=100, log=True, density=False, alpha=0.3)
 
-        axes[0].set_xlabel('time (s)')
+        t = time_step * np.arange(nmax)
+
+        axes[0].plot(t, x[0:nmax], 'o')
+        for i in range_pairs:
+            if selector[i[1]] > nmax:
+                break
+            axes[0].plot(t[range(selector[i][0], selector[i][1])], x[range(selector[i][0], selector[i][1])], 'x')
+
+        axes[0].set_title('angle (deg)')
+        axes[0].set_xlabel('time (selector)')
         axes[1].set_title('angle (deg)')
         axes[1].set_xlabel('angle (deg)')
         axes[1].set_title('probability density')
         axes[2].set_xlabel('freq (Hz)')
         axes[2].set_title('probability density')
+
+        # mark the phase boundaries
+        axes[0].plot([0, time_step * nmax], [angle_min, angle_min], 'k--')
+        axes[0].plot([0, time_step * nmax], [angle_max, angle_max], 'k--')
 
         return fig, axes, np.mean(freqs), np.std(freqs)
     else:
