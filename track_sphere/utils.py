@@ -205,15 +205,16 @@ def get_rotation_frequency_old(data, info, n_avrg=20 ,n_avrg_unwrapped=20, wrap_
     return np.mean(freqs), np.std(freqs), timestamp, n_avrg, n_avrg_unwrapped
 
 
-def get_rotation_frequency(data, info, return_figure=False, angle_min=50, angle_max=130, nmax=100, axes=None):
+def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None, angle_min=50, angle_max=130, nmax=100, axes=None):
     """
     calculate the rotation frequency from a time trace of angle data, the assumption is that the rotation is constant
     Args:
         data:
         info:
         return_figure:
-        angle_min:
-        angle_max:
+        exclude_percent: value between 0 and 1, all the angles that are below this percentage wrt the max angle count are excluded
+        angle_min: minimum angle to be taken into account, if exculude_percent is not None, this value is ignored
+        angle_max: maximum angle to be taken into account, if exculude_percent is not None, this value is ignored
         nmax:
         axes:
 
@@ -221,49 +222,94 @@ def get_rotation_frequency(data, info, return_figure=False, angle_min=50, angle_
 
     """
 
+    if axes is None:
+        fig, axes = plt.subplots(1, 3, sharey=False, sharex=False, figsize=(8 * 3, 8))
+    else:
+        fig = None
+
     x = data['ellipse angle'].as_matrix()
+
+    counts, bins, _ = axes[1].hist(x, bins=100, log=True, density=False, alpha=0.3)
+
+
+    if exclude_percent is not None:
+        # get the min and max angle from the histogram
+        angle_min = min(bins[:-1][counts / np.max(counts) > 0.1])
+        angle_max = max(bins[:-1][counts / np.max(counts) > 0.1])
+
+    angle_jump = (angle_max - angle_min) / 2
     time_step = 1. / info['info']['FrameRate']
 
-    # select all the angles between angle_min and angle_max
+    def boolean_selector(x, direction):
+        if direction=='left':
+            return
 
     # select all the angles between angle_min and angle_max
-    selector = np.where(np.logical_and(x >= angle_min, x <= angle_max))[0]
-    range_pairs = [i for i, df in enumerate(np.diff(selector)) if df != 1]  # find all the values where data is not continuous
+    boolean_selector = np.logical_and(x >= angle_min, x <= angle_max)
+
+    # figure out the orientation
+    left = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) < 0)
+    right = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) > 0)
+    boolean_selector = left if sum(left)>sum(right) else right
+
+
+    boolean_selector = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) < 0)
+
+    selector = np.where(boolean_selector)[0]
+    # find all the values where data is not continuous and arrange in pairs
+    range_pairs = [i for i, df in enumerate(np.diff(selector)) if df != 1]
     range_pairs = np.hstack([-1, range_pairs, len(selector) - 1])  # add first and last elements
     range_pairs = np.vstack([range_pairs[:-1] + 1, range_pairs[1:]]).T
     # remove the elements where there is only a single value
     range_pairs = [i for i in range_pairs if np.diff(i) > 1]
 
     # now calculate the freq from the slope of the continuous ranges of data
-    freqs = [np.mean(np.diff(x[range(selector[i][0], selector[i][1])])) / time_step / 360 for i in range_pairs]
+    def fmean(i):
+        # define helper function
+        yo = x[range(selector[i][0], selector[i][1])]
+        yo = np.unwrap(yo, angle_jump)
+        return np.mean(np.diff(yo)) / time_step / 360
+
+    freqs = [fmean(i) for i in range_pairs]
+    # now calculate the freq from the slope of the continuous ranges of data - by fitting
+    # def linfit(i):
+    #     # define helper function
+    #     # xo = np.arange(selector[i[0]], selector[i[1]])
+    #     # yo = x[xo]
+    #     to = t[range(selector[i][0], selector[i][1])]
+    #     yo = x[range(selector[i][0], selector[i][1])]
+    #     fit = np.polyfit(to, yo, 1)
+    #     return fit
+
+    # freqs = [linfit(i)[1] for i in range_pairs]
 
     if return_figure:
-        if axes is None:
-            fig, axes = plt.subplots(1, 3, sharey=False, sharex=False, figsize=(8 * 3, 8))
-        else:
-            fig=None
-
-        axes[1].hist(x, bins=100, log=True, density=False, alpha=0.3)
-        axes[2].hist(np.diff(x) / time_step / 360, bins=100, log=True, density=False, alpha=0.3)
-
-        axes[1].hist(x[selector], bins=100, log=True, density=False, alpha=0.3)
-        axes[2].hist(freqs, bins=100, log=True, density=False, alpha=0.3)
-
         t = time_step * np.arange(nmax)
+        axes[1].hist(x[selector], bins=bins, log=True, density=False, alpha=0.3)
+        _, bins, _ = axes[2].hist(np.diff(x) / time_step / 360, bins=100, log=True, density=False, alpha=0.3)
+        axes[2].hist(freqs, bins=bins, log=True, density=False, alpha=0.3)
 
         axes[0].plot(t, x[0:nmax], 'o')
         for i in range_pairs:
             if selector[i[1]] > nmax:
                 break
-            axes[0].plot(t[range(selector[i][0], selector[i][1])], x[range(selector[i][0], selector[i][1])], 'x')
+            to = t[range(selector[i][0], selector[i][1])]
+            yo = x[range(selector[i][0], selector[i][1])]
+            axes[0].plot(to, yo, 'x')
+
+            # fit = np.polyfit(to, yo, 1)
+            # fit = linfit(i)
+            # axes[0].plot(to, np.poly1d(fit)(to), 'k-')
+            axes[0].plot(to, max(yo)+fmean(i)*360*(to-to[0]), 'k-')
+
 
         axes[0].set_title('angle (deg)')
         axes[0].set_xlabel('time (selector)')
         axes[1].set_title('angle (deg)')
         axes[1].set_xlabel('angle (deg)')
-        axes[1].set_title('probability density')
+        axes[1].set_title('probability (counts)')
         axes[2].set_xlabel('freq (Hz)')
-        axes[2].set_title('probability density')
+        axes[2].set_title('probability (counts)')
 
         # mark the phase boundaries
         axes[0].plot([0, time_step * nmax], [angle_min, angle_min], 'k--')
