@@ -3,8 +3,8 @@ import yaml
 import json
 import pandas as pd
 import cv2 as cv
-
-
+import numpy as np
+from datetime import datetime
 def load_video_info(filename):
     """
     loads the video metadata that has been exported with metainfo (www.MediaArea.net) into a json file
@@ -224,29 +224,51 @@ def grab_frame(file_in, frame_id=0, verbose=False):
     return frame_in
 
 
-def load_info_to_dataframe(position_file_names, source_folder_positions):
+def load_info_to_dataframe(position_file_names, source_folder_positions, experiment_begin=None):
+
+    # create empty dictionary
     data_dict = {'timestamp': [], 'freq_slope': [], 'err_slope': [], 'filename': [], 'id': []}
-
-
-    for mode in ['x', 'y', 'z', 'r']:
+    for mode in ['x', 'y', 'z', 'r', 'r-unwrap']:
         data_dict['freq_' + mode + '_mode'] = []
+        data_dict['power_' + mode + '_mode'] = []
+    if experiment_begin is not None:
+        assert isinstance(experiment_begin, str)
+        data_dict['time (s)'] = []
+        start = (datetime.strptime(experiment_begin.split('.')[0], '%Y-%m-%d %H:%M:%S'))
 
     for i, filename in enumerate(position_file_names):
-        info = load_info(filename, folder_positions=source_folder_positions)['ellipse']
-        data_dict['timestamp'].append(
-            load_info(filename, folder_positions=source_folder_positions)['info']['File_Modified_Date_Local'])
+
+        info = load_info(filename, folder_positions=source_folder_positions)
+
+        # move to next dataset if ellipse data has not been created
+        if 'ellipse' not in info:
+            continue
+
+        info = info['ellipse']
+        time = load_info(filename, folder_positions=source_folder_positions)['info']['File_Modified_Date_Local']
+        data_dict['timestamp'].append(time)
+        if experiment_begin is not None:
+            time = (datetime.strptime(time.split('.')[0], '%Y-%m-%d %H:%M:%S') - start)
+            data_dict['time (s)'].append(time.seconds + time.days*24*60*60)
+
         if 'rotation_freq_slope_fit' in info:
             data_dict['freq_slope'].append(info['rotation_freq_slope_fit']['freq'])
             data_dict['err_slope'].append(info['rotation_freq_slope_fit']['err'])
-        for mode in ['x', 'y', 'z', 'r']:
+        for mode in ['x', 'y', 'z', 'r', 'r-unwrap']:
             if mode in info:
                 data_dict['freq_' + mode + '_mode'].append(info[mode])
             else:
                 data_dict['freq_' + mode + '_mode'].append(np.nan)
+            if mode+'_power' in info:
+                data_dict['power_' + mode + '_mode'].append(info[mode+'_power'])
+            else:
+                data_dict['power_' + mode + '_mode'].append(np.nan)
         data_dict['filename'].append(filename)
         data_dict['id'].append(int(filename.split('-')[0].split('_')[-1]))
+
+
     df = pd.DataFrame.from_dict(data_dict)
-    df.set_index('id')
+    df = df.set_index('id')
 
     return df
 

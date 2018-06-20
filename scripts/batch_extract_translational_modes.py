@@ -13,10 +13,10 @@ method = 'fit_ellipse'
 
 
 
-experiment = 'long term run 2a'
-experiment = 'long term run 2 fit slope'
-experiment = 'long term run r-unwrap'
-# experiment = 'long term run r-mode'
+
+experiment = 'long term run 2 x'
+experiment = 'long term run 2 y'
+experiment = 'long term run 2 xyz'
 
 print_only_names = True
 print_only_names = False
@@ -27,63 +27,40 @@ print_only_names = False
 ################################################################################
 #### experiment specific settings
 ################################################################################
-if experiment == 'long term run 2a':
+if experiment == 'long term run 2 x':
 
-    interval_width = 200
+    interval_width = 5
     interval_width_zoom = 0.9
-    fo = 101
-
+    fo = 60
+    mode = 'x'
     analysis_method = 1
-    mode = 'r'
+    # get all the files and sort them by the run number
+    position_file_names = get_position_file_names(source_folder_positions, method=method)
+    # select the subset of interest
+    position_file_names = position_file_names[29:]  # all
+elif experiment == 'long term run 2 y':
+
+    interval_width = 5
+    interval_width_zoom = 0.9
+    fo = 70
+    mode = 'y'
+    analysis_method = 1
     # get all the files and sort them by the run number
     position_file_names = get_position_file_names(source_folder_positions, method=method)
     # select the subset of interest
     position_file_names = position_file_names[29:]  # all
 
-    # position_file_names = position_file_names[29:32]
-    # position_file_names = position_file_names[32:35]
-elif experiment == 'long term run r-mode':
+elif experiment == 'long term run 2 xyz':
 
-    interval_width = None
-    interval_width_zoom = 0.9
-    fo = None
+    interval_width = [1, 1, 5]
+    interval_width_zoom = 0.5
+    fo = [60, 61.1, 70]
 
     analysis_method = 2
-
-    mode = 'r'
     # get all the files and sort them by the run number
     position_file_names = get_position_file_names(source_folder_positions, method=method)
     # select the subset of interest
     position_file_names = position_file_names[29:]  # all
-elif experiment == 'long term run r-unwrap':
-
-    interval_width = None
-    interval_width_zoom = 0.9
-    fo = None
-
-    analysis_method = 2
-    mode = 'r-unwrap'
-    # get all the files and sort them by the run number
-    position_file_names = get_position_file_names(source_folder_positions, method=method)
-    # select the subset of interest
-    position_file_names = position_file_names[29:]  # all
-
-elif experiment == 'long term run 2 fit slope':
-
-    analysis_method = 3
-    # get all the files and sort them by the run number
-    position_file_names = get_position_file_names(source_folder_positions, method=method)
-    # select the subset of interest
-    # position_file_names = position_file_names[29:]  # all
-    # position_file_names = position_file_names[48:]
-    position_file_names = position_file_names[29:]
-
-
-elif experiment == 'run':
-    run = 19
-    position_file_names = get_position_file_names(source_folder_positions, method=method)
-    position_file_names = position_file_names[run-1:run]
-
 
 ################################################################################
 #### run the script
@@ -96,25 +73,13 @@ for i, filename in enumerate(position_file_names):
 
     print(filename)
 
+
     # ================================================
-    # ==== method 1 = get the frequency from the phase
+    # ==== method 1 = get the frequency from fft for single mode
     # ================================================
     if analysis_method == 1:
         data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
-        fig, axes, freqs = get_rotation_frequency(data, info, return_figure=True, exclude_percent=0.2, nmax=500)
 
-        # save figure
-        image_filename = os.path.join(image_folder, filename.replace('.dat', '-r-phase.png'))
-        fig.savefig(image_filename)
-        plt.close(fig)
-
-        update_info(filename, 'rotation_freq', freqs, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
-    # ================================================
-    # ==== method 2 = get the frequency from fft
-    # ================================================
-    elif analysis_method == 2:
-
-        data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
         # retrieve frequencies and figure
         fig, axes, freqs = get_mode_frequency_fft(data, mode, info, return_figure=True,
                                               interval_width=interval_width,
@@ -130,18 +95,26 @@ for i, filename in enumerate(position_file_names):
         for key, value in freqs.items():
             print(key, value)
             update_info(filename, key, value, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
-
     # ================================================
-    # ==== method 3 = get the frequency from a fit to the slope of the unwrapped phase
+    # ==== method 2 = get the frequency from fft for all modes
     # ================================================
-    if analysis_method == 3:
+    elif analysis_method == 2:
         data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
-        fig, axes, freqs = get_rotation_frequency_fit_slope(data, info, return_figure=True, nmax=500)
+        for i, mode in enumerate(['x', 'y', 'z']):
+            # retrieve frequencies and figure
+            fig, axes, freqs = get_mode_frequency_fft(data, mode, info, return_figure=True,
+                                                  interval_width=interval_width[i],
+                                                  interval_width_zoom=interval_width_zoom,
+                                                  fo=fo[i])
 
-        fig.suptitle(filename)
-        # save figure
-        image_filename = os.path.join(image_folder, filename.replace('.dat', '-r-slope.png'))
-        fig.savefig(image_filename)
-        plt.close(fig)
+            # save figure
+            image_filename = os.path.join(image_folder, filename.replace('.dat', '-' + mode + '-fft.png'))
+            fig.savefig(image_filename)
+            plt.close(fig)
 
-        update_info(filename, 'rotation_freq_slope_fit', freqs, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
+            # update info (json) file
+            for key, value in freqs.items():
+                print(key, value)
+                update_info(filename, key, value, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
+
+

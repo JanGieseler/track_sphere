@@ -198,7 +198,7 @@ def get_rotation_frequency_fit_slope(data, info, n_avrg=1, n_avrg_unwrapped=1, w
 
     """
     if axes is None:
-        fig, axes = plt.subplots(1, 2, sharey=False, sharex=False, figsize=(8 * 2, 4))
+        fig, axes = plt.subplots(1, 2, sharey=False, sharex=False, figsize=(8 * 2,6))
     else:
         fig = None
 
@@ -387,7 +387,7 @@ def get_position_file_names(source_folder_positions, method):
 
 
 def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width=None, interval_width_zoom=0.1, fo=None,
-                           verbose=False):
+                           verbose=False, n_smooth=None):
 
     """
 
@@ -400,7 +400,7 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
         interval_width_zoom:(for plotting)
         fo: center of range where to look for peak, if None take center of full range
         verbose:
-
+        n_smooth: if not None avrg n_smooth values to smoothen the spectra
     Returns:
 
     """
@@ -421,17 +421,33 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
 
     f, p = power_spectral_density(x, time_step, frequency_range=None)
 
+
     if interval_width is None:
-        frequency_range = (min(f), max(f))
+        frequency_range = (min(f[1:]), max(f))  # for the minimum ignore the first value because this is DC
     else:
         frequency_range = (fo - interval_width / 2, fo + interval_width / 2)
 
+    if n_smooth is None:
+        f2, p2 = f, p
+    else:
+        f2 = avrg(f, n_smooth)
+        p2 = avrg(p, n_smooth)
+
     # pick the range of interest
-    bRange = np.all([(f > frequency_range[0]), (f < frequency_range[1])], axis=0)
-    F = f[bRange]
-    P = p[bRange]
+    bRange = np.all([(f2 > frequency_range[0]), (f2 < frequency_range[1])], axis=0)
+    F = f2[bRange]
+    P = p2[bRange]
 
     freqs[mode] = F[np.argmax(P)]
+    df = np.mean(np.diff(F))
+
+    frequency_range_zoom = (freqs[mode] - 0.5 * interval_width_zoom, freqs[mode] + 0.5 * interval_width_zoom)
+    bRange_zoom = np.all([(F >= frequency_range_zoom[0]), (F <= frequency_range_zoom[1])], axis=0)
+    F_zoom = F[bRange_zoom]
+    P_zoom = P[bRange_zoom]
+
+    freqs[mode + '_power'] = np.sum(P_zoom) * df
+
 
     if verbose:
         print(mode + ': ', freqs[mode])
@@ -439,15 +455,25 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
     if return_figure:
         ## plot
         fig, axes = plt.subplots(1, 2, sharey=False, sharex=False, figsize=(8 * 3, 4))
-        axes[0].plot(F, P / max(P))
+        axes[0].semilogy(F, P / max(P))
+
+        axes[1].plot(F_zoom, P_zoom, 'o')
 
         # zoom plot
-        frequency_range_zoom = (freqs[mode] - 0.5 * interval_width_zoom, freqs[mode] + 0.5 * interval_width_zoom)
-        bRange_zoom = np.all([(F >= frequency_range_zoom[0]), (F <= frequency_range_zoom[1])], axis=0)
-        F_zoom = F[bRange_zoom]
-        P_zoom = P[bRange_zoom]
+        if n_smooth is not None:
+            # pick the range of interest
+            bRange = np.all([(f > frequency_range[0]), (f < frequency_range[1])], axis=0)
+            F = f[bRange]
+            P = p[bRange]
 
-        axes[1].plot(F_zoom, P_zoom)
+            frequency_range_zoom = (freqs[mode] - 0.5 * interval_width_zoom, freqs[mode] + 0.5 * interval_width_zoom)
+            bRange_zoom = np.all([(F >= frequency_range_zoom[0]), (F <= frequency_range_zoom[1])], axis=0)
+            F_zoom = F[bRange_zoom]
+            P_zoom = P[bRange_zoom]
+            axes[1].plot(F_zoom, P_zoom)
+
+
+
         axes[1].set_title(mode + ' axis')
 
         for a in axes:

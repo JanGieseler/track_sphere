@@ -1,3 +1,6 @@
+
+# probably obsolete
+
 import os
 from track_sphere.plot_data import plot_rotations_vs_time, plot_ellipse_spectra_zoom
 from track_sphere.read_write import load_time_trace
