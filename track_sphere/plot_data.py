@@ -211,7 +211,7 @@ def plot_ellipse_spectra_zoom(data, info, annotation_dict={}, freq_window=1, n_a
     return fig, axes
 
 
-def plot_rotations_vs_time(data, time_step, t_max=None, n_avrg=20,n_avrg_unwrapped=20, axes=None, verbose=False, wrap_angle=None):
+def plot_rotations_vs_time(data, time_step, t_max=0.1, n_avrg=20,n_avrg_unwrapped=20, axes=None, verbose=False, wrap_angle=None):
     """
     plots a zoom in of the unwrapped angle, the full time trace and the distribution histogram of frequencies
     which are calculated from the derivative of the phase
@@ -232,9 +232,10 @@ def plot_rotations_vs_time(data, time_step, t_max=None, n_avrg=20,n_avrg_unwrapp
     if wrap_angle is None:
         wrap_angle = get_wrap_angle(data['ellipse angle'], navrg=n_avrg)
 
+    if verbose:
+        print('wrap_angle', wrap_angle)
 
-    if t_max is None:
-        t_max = 0.1
+
     min_frame, max_frame = 0, int(t_max/time_step/n_avrg)
 
 
@@ -254,7 +255,7 @@ def plot_rotations_vs_time(data, time_step, t_max=None, n_avrg=20,n_avrg_unwrapp
 
 
     rot_angle = avrg(rot_angle, n=n_avrg)
-    x = ax4.hist(rot_angle, log=True, bins=50, density=True, alpha=0.3)
+    x = ax4.hist(rot_angle, log=True, bins=50, alpha=0.3)
 
     rot_angle = np.unwrap(rot_angle, discont=wrap_angle)
 
@@ -263,7 +264,12 @@ def plot_rotations_vs_time(data, time_step, t_max=None, n_avrg=20,n_avrg_unwrapp
     ax1.plot(t, rot_angle[frames] / 360)
 
     t2 = time_step *n_avrg* np.arange(len(rot_angle))
-    ax2.plot(t2, 1e-3 * rot_angle / 360)
+    if max(rot_angle)>1e3:
+        ax2.plot(t2, 1e-3 * rot_angle / 360)
+        label2 = 'rotations (x 1000)'
+    else:
+        ax2.plot(t2, rot_angle / 360)
+        label2 = 'rotations'
 
 
     rot_angle = avrg(rot_angle, n=n_avrg_unwrapped)
@@ -278,7 +284,7 @@ def plot_rotations_vs_time(data, time_step, t_max=None, n_avrg=20,n_avrg_unwrapp
 
 
 
-    x = ax3.hist(freqs, log=True, bins=50, density=True, alpha=0.3)
+    x = ax3.hist(freqs, log=True, bins=50, alpha=0.3)
 
 
     # if fig is None:
@@ -286,7 +292,7 @@ def plot_rotations_vs_time(data, time_step, t_max=None, n_avrg=20,n_avrg_unwrapp
     ax2.set_title('full')
 
     ax1.set_ylabel('rotations')
-    ax2.set_ylabel('rotations (x 1000)')
+    ax2.set_ylabel(label2)
     ax3.set_ylabel('probability density')
     ax1.set_xlabel('time (s)')
     ax2.set_xlabel('time (s)')
@@ -544,7 +550,7 @@ def plot_tracking_error(data, methods):
     plt.legend(loc = (1,0.5))
 
 
-def plot_rot_angle_dist(data, time_step, frame_max=100, n_avrg_list = [1,2, 4, 8, 16, 32, 64, 128]):
+def plot_rot_angle_dist(data, info, frame_max=100, n_avrg_list = [1,2, 4, 8, 16, 32, 64, 128]):
     """
     plots the distribution of angles as a function of binning length
     Args:
@@ -557,7 +563,7 @@ def plot_rot_angle_dist(data, time_step, frame_max=100, n_avrg_list = [1,2, 4, 8
     Returns:
 
     """
-
+    time_step = info['info']['FrameRate']
     rot_angle = data['ellipse angle']
 
     fig, axes = plt.subplots(2, 2, sharey=False, sharex=False, figsize=(20, 8))
@@ -569,7 +575,7 @@ def plot_rot_angle_dist(data, time_step, frame_max=100, n_avrg_list = [1,2, 4, 8
 
         x = axes[0,0].hist(rot_angle_avrg, log=True, bins=50, density=True, alpha=0.3)
 
-        res.append(get_rotation_frequency(data, time_step, n_avrg=n_avrg)[0:2])
+        res.append(get_rotation_frequency(data, info)[0:2])
 
         axes[1,0].plot(np.arange(int(frame_max/n_avrg))*time_step*n_avrg, rot_angle_avrg[:int(frame_max/n_avrg)], '.-', label='n_avrg={:d}'.format(n_avrg))
 

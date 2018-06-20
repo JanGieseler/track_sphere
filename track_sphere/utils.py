@@ -6,7 +6,8 @@ import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
 from glob import glob
-
+import operator
+from functools import reduce
 
 
 def roi_2_roi_tlc(roi):
@@ -146,7 +147,7 @@ def avrg(x, n=10):
     m = int(len(x)/n)
     return np.mean(x[0:n*m].reshape([m, n]), axis=1)
 
-def get_wrap_angle(angles, bins=2000, navrg=50, n_smooth_dist = 50, plot_distibutions_axes=None):
+def get_wrap_angle(angles, bins=2000, navrg=1, n_smooth_dist = 1, plot_distibutions_axes=None):
     """
     calcuates the optimal wrap angle based on the histogram of the differential of the angles
     the histogram has a peak around zero and 180 deg
@@ -166,7 +167,16 @@ def get_wrap_angle(angles, bins=2000, navrg=50, n_smooth_dist = 50, plot_distibu
 
     x0 = avrg(x[0], n_smooth_dist)
     x1 = avrg(x[1], n_smooth_dist)
-    wrap_angle = x1[np.argmin(x0)]
+
+    xmin = np.where(x[0] == x[0].min())[0]
+    if len(xmin) == 1:
+        wrap_angle = x1[np.argmin(x0)]
+    else:
+        # there is more than one value with the smalles value,
+        # then we look for the larges range of continuous values and take the average
+        range_pairs = [i for i, df in enumerate(np.diff(xmin)) if df > 1]
+        imax = np.argmax(np.diff(xmin[range_pairs]))
+        wrap_angle = np.mean(x[1][[xmin[range_pairs][imax], xmin[range_pairs][imax + 1]]])
 
 
     if plot_distibutions_axes is not None:
@@ -175,7 +185,7 @@ def get_wrap_angle(angles, bins=2000, navrg=50, n_smooth_dist = 50, plot_distibu
     return wrap_angle
 
 
-def get_rotation_frequency_old(data, info, n_avrg=20 ,n_avrg_unwrapped=20, wrap_angle=None):
+def get_rotation_frequency_fit_slope(data, info, n_avrg=1, n_avrg_unwrapped=1, wrap_angle=None, return_figure=False, axes=None, nmax=500):
     """
     calculate the rotation frequency from a time trace of angle data, the assumption is that the rotation is constant
     Args:
@@ -187,6 +197,10 @@ def get_rotation_frequency_old(data, info, n_avrg=20 ,n_avrg_unwrapped=20, wrap_
     Returns:
 
     """
+    if axes is None:
+        fig, axes = plt.subplots(1, 2, sharey=False, sharex=False, figsize=(8 * 2, 4))
+    else:
+        fig = None
 
     if isinstance(info, dict):
         time_step = 1. / info['info']['FrameRate']
@@ -200,9 +214,37 @@ def get_rotation_frequency_old(data, info, n_avrg=20 ,n_avrg_unwrapped=20, wrap_
     rot_angle = avrg(data['ellipse angle'], n=n_avrg)
     rot_angle = np.unwrap(rot_angle, discont=wrap_angle)
     rot_angle = avrg(rot_angle, n=n_avrg_unwrapped)
-    freqs = np.diff(rot_angle) / (360 * time_step * n_avrg_unwrapped)
+    t = np.arange(len(rot_angle))* time_step * n_avrg_unwrapped
+    fit, cov = np.polyfit(t, rot_angle/360, 1, cov=True)
 
-    return np.mean(freqs), np.std(freqs), timestamp, n_avrg, n_avrg_unwrapped
+    freq = fit[0]
+
+    # err = np.std(rot_angle - np.poly1d(fit)(t)) / np.mean(rot_angle) * fit[0]  # relative error of fit
+    err = np.sqrt(np.diag(cov))[0]
+
+
+
+    return_dict = {'freq':freq, 'err': err,
+                   'timestamp':timestamp,
+                   'n_avrg':n_avrg, 'n_avrg_unwrapped':n_avrg_unwrapped
+                   }
+
+    print(return_dict)
+
+    if return_figure:
+        axes[0].plot(t[0:nmax], rot_angle[0:nmax]/360, '.')
+        axes[0].plot(t[0:nmax],  np.poly1d(fit)(t[0:nmax]), '-', linewidth = 3)
+        axes[1].plot(t, rot_angle/360, '.')
+        axes[1].plot(t, np.poly1d(fit)(t), '-', linewidth = 3)
+
+        axes[0].set_ylabel('rotations')
+        axes[0].set_xlabel('time (s)')
+        axes[1].set_ylabel('rotations')
+        axes[1].set_xlabel('time (s)')
+
+        return fig, axes, return_dict
+    else:
+        return return_dict
 
 
 def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None, angle_min=50, angle_max=130, nmax=100, axes=None):
@@ -246,8 +288,10 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
     # figure out the orientation
     left = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) < angle_jump)
     right = np.logical_and(boolean_selector, np.hstack([np.diff(x), 0]) > angle_jump)
-    print(sum(left), sum(right))
-    boolean_selector = left if sum(left)>sum(right) else right
+
+    boolean_selector = left if sum(left) > sum(right) else right
+
+    direction = 'left' if sum(left) > sum(right) else 'right'
 
 
     selector = np.where(boolean_selector)[0]
@@ -259,13 +303,15 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
     range_pairs = [i for i in range_pairs if np.diff(i) > 1]
 
     # now calculate the freq from the slope of the continuous ranges of data
-    def fmean(i):
+    def fdiff(i):
         # define helper function
         yo = x[range(selector[i][0], selector[i][1])]
         yo = np.unwrap(yo, angle_jump)
-        return np.mean(np.diff(yo)) / time_step / 360
+        return np.diff(yo) / time_step / 360
 
-    freqs = [fmean(i) for i in range_pairs]
+    freqs = [fdiff(i) for i in range_pairs]
+    freqs = np.hstack(freqs) # turn into 1D array
+
     # now calculate the freq from the slope of the continuous ranges of data - by fitting
     # def linfit(i):
     #     # define helper function
@@ -301,7 +347,11 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
             # fit = np.polyfit(to, yo, 1)
             # fit = linfit(i)
             # axes[0].plot(to, np.poly1d(fit)(to), 'k-')
-            axes[0].plot(to, max(yo)+fmean(i)*360*(to-to[0]), 'k-')
+            if direction == 'left':
+                # axes[0].plot(to, max(yo)+fmean(i)*360*(to-to[0]), 'k-')
+                axes[0].plot(to, max(yo) + np.mean(fdiff(i)) * 360 * (to - to[0]), 'k-')
+            else:
+                axes[0].plot(to, min(yo) + np.mean(fdiff(i)) * 360 * (to - to[0]), 'k-')
 
 
         axes[0].set_title('angle (deg)')
@@ -336,8 +386,8 @@ def get_position_file_names(source_folder_positions, method):
     return position_file_names
 
 
-def get_mode_frequency(data, mode, info, return_figure=False, interval_width=None, interval_width_zoom=0.1, fo=None,
-                       verbose=False):
+def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width=None, interval_width_zoom=0.1, fo=None,
+                           verbose=False):
 
     """
 
@@ -359,10 +409,15 @@ def get_mode_frequency(data, mode, info, return_figure=False, interval_width=Non
 
     if mode == 'r':
         x = data['ellipse angle']
+    elif mode == 'r-unwrap':
+        x = data['ellipse angle']
+        x = np.unwrap(x, get_wrap_angle(x))
     elif mode == 'z':
         x = data['ellipse x'] * data['ellipse y'] * np.pi
     else:
         x = data['ellipse ' + mode]
+
+    x = x-np.mean(x)  # make zero mean
 
     f, p = power_spectral_density(x, time_step, frequency_range=None)
 
@@ -400,6 +455,23 @@ def get_mode_frequency(data, mode, info, return_figure=False, interval_width=Non
         return fig, axes, freqs
     else:
         return freqs
+
+
+# def sequence_pairs(x):
+#     """
+#     find all the values where data is continuous and arrange in pairs
+#     Args:
+#         x: a list of indecies
+#
+#     Returns:
+#
+#     """
+#     range_pairs = [i for i, df in enumerate(np.diff(x)) if df > 1]
+#     range_pairs = np.hstack([-1, range_pairs, len(x) - 1])  # add first and last elements
+#     range_pairs = np.vstack([range_pairs[:-1] + 1, range_pairs[1:]]).T
+#
+#     return range_pairs
+#
 
 if __name__ == '__main__':
     folder_in = '../example_data/'

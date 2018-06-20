@@ -222,3 +222,32 @@ def grab_frame(file_in, frame_id=0, verbose=False):
         print(file_in, ':', ret)
 
     return frame_in
+
+
+def load_info_to_dataframe(position_file_names, source_folder_positions):
+    data_dict = {'timestamp': [], 'freq_slope': [], 'err_slope': [], 'filename': [], 'id': []}
+
+
+    for mode in ['x', 'y', 'z', 'r']:
+        data_dict['freq_' + mode + '_mode'] = []
+
+    for i, filename in enumerate(position_file_names):
+        info = load_info(filename, folder_positions=source_folder_positions)['ellipse']
+        data_dict['timestamp'].append(
+            load_info(filename, folder_positions=source_folder_positions)['info']['File_Modified_Date_Local'])
+        if 'rotation_freq_slope_fit' in info:
+            data_dict['freq_slope'].append(info['rotation_freq_slope_fit']['freq'])
+            data_dict['err_slope'].append(info['rotation_freq_slope_fit']['err'])
+        for mode in ['x', 'y', 'z', 'r']:
+            if mode in info:
+                data_dict['freq_' + mode + '_mode'].append(info[mode])
+            else:
+                data_dict['freq_' + mode + '_mode'].append(np.nan)
+        data_dict['filename'].append(filename)
+        data_dict['id'].append(int(filename.split('-')[0].split('_')[-1]))
+    df = pd.DataFrame.from_dict(data_dict)
+    df.set_index('id')
+
+    return df
+
+

@@ -87,7 +87,7 @@ elif case == 'create video relevitate':
 ################################################################################
 #### run the script
 ################################################################################
-for f in video_files[46:]:
+for f in video_files[63:]:
 
     filename_in = os.path.basename(f)
     print(filename_in)
