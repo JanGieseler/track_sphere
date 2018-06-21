@@ -9,6 +9,7 @@ from track_sphere.extract_data_opencv import *
 # select one of the cases, case specific parameters are defined below
 case = 'extract all 20180607_Sample_6_bead_1'
 # case = 'create video relevitate'
+case = 'create video oscillation rotation'
 
 ################################################################################
 #### define parameters for each case
@@ -84,10 +85,47 @@ elif case == 'create video relevitate':
     folder_in = '../raw_data/20180607_Sample_6_bead_1/'
 
     video_files = sorted(glob(os.path.join(folder_in, '20180613_Sample_6_Bead_25_levitate.avi')))
+elif case == 'create video oscillation rotation':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'fit_ellipse'
+
+    export_video = True
+    output_fps = 25
+    output_images = 1
+
+    min_frame = 0
+    max_frame = 2000
+    # max_frame = 12000
+    # min_frame = 11880
+
+    process_method = 'morph'
+
+    # processed_data
+    folder_out = '../processed_data/video'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    process_parameters = {'process_method': process_method}
+    ################################################################################
+    #### for real data: 20180607_Sample6_bead_1
+    ################################################################################
+    extraction_parameters['threshold'] = 'mean'
+    extraction_parameters['blockSize'] = 21
+    extraction_parameters['c'] = 5
+    extraction_parameters['maxval'] = 255
+    extraction_parameters['convex_hull'] = True
+    #source folder
+    folder_in = '../raw_data/20180607_Sample_6_bead_1/'
+
+    video_files = sorted(glob(os.path.join(folder_in, '*96.avi')))
+
 ################################################################################
 #### run the script
 ################################################################################
-for f in video_files[63:]:
+for f in video_files:
 
     filename_in = os.path.basename(f)
     print(filename_in)

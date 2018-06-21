@@ -103,6 +103,28 @@ def load_time_trace(filename, source_folder_positions=None, methods=[], verbose=
 
     return data, info
 
+
+def load_psd(filename, source_folder_psd=None, verbose=False):
+
+
+    # if no source folder is provided take the directory name from the video_filename
+    if source_folder_psd is None:
+        source_folder_psd = os.path.dirname(filename)
+
+    if source_folder_psd is not None:
+        filepath = os.path.join(source_folder_psd, filename)
+    data = None
+    # load data
+    # index_col=0 produces a warning not quite clear why
+    # check: https://stackoverflow.com/questions/48818335/why-pandas-read-csv-issues-this-warning-elementwise-comparison-failed
+    data = pd.read_csv(filepath, index_col=0)
+
+    if verbose:
+        print('data set contains: ', data.keys())
+        print('data shape is: ', data.shape)
+
+    return data
+
 def load_info(filename, folder_positions=None, verbose=False, return_filname=False):
     """
     loads the info file that is created together with the position data
@@ -227,7 +249,8 @@ def grab_frame(file_in, frame_id=0, verbose=False):
 def load_info_to_dataframe(position_file_names, source_folder_positions, experiment_begin=None):
 
     # create empty dictionary
-    data_dict = {'timestamp': [], 'freq_slope': [], 'err_slope': [], 'filename': [], 'id': []}
+    data_dict = {'timestamp': [], 'freq_slope': [], 'err_slope': [], 'filename': [], 'id': [],
+                 'FrameCount':[], 'FrameRate':[]}
     for mode in ['x', 'y', 'z', 'r', 'r-unwrap']:
         data_dict['freq_' + mode + '_mode'] = []
         data_dict['power_' + mode + '_mode'] = []
@@ -238,33 +261,38 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
 
     for i, filename in enumerate(position_file_names):
 
-        info = load_info(filename, folder_positions=source_folder_positions)
+        # parameter that we extracted
+        info_in = load_info(filename, folder_positions=source_folder_positions)
 
         # move to next dataset if ellipse data has not been created
-        if 'ellipse' not in info:
-            continue
+        if 'ellipse' in info_in:
+            info = info_in['ellipse']
+            time = load_info(filename, folder_positions=source_folder_positions)['info']['File_Modified_Date_Local']
+            data_dict['timestamp'].append(time)
+            if experiment_begin is not None:
+                time = (datetime.strptime(time.split('.')[0], '%Y-%m-%d %H:%M:%S') - start)
+                data_dict['time (s)'].append(time.seconds + time.days*24*60*60)
 
-        info = info['ellipse']
-        time = load_info(filename, folder_positions=source_folder_positions)['info']['File_Modified_Date_Local']
-        data_dict['timestamp'].append(time)
-        if experiment_begin is not None:
-            time = (datetime.strptime(time.split('.')[0], '%Y-%m-%d %H:%M:%S') - start)
-            data_dict['time (s)'].append(time.seconds + time.days*24*60*60)
+            if 'rotation_freq_slope_fit' in info:
+                data_dict['freq_slope'].append(info['rotation_freq_slope_fit']['freq'])
+                data_dict['err_slope'].append(info['rotation_freq_slope_fit']['err'])
+            for mode in ['x', 'y', 'z', 'r', 'r-unwrap']:
+                if mode in info:
+                    data_dict['freq_' + mode + '_mode'].append(info[mode])
+                else:
+                    data_dict['freq_' + mode + '_mode'].append(np.nan)
+                if mode+'_power' in info:
+                    data_dict['power_' + mode + '_mode'].append(info[mode+'_power'])
+                else:
+                    data_dict['power_' + mode + '_mode'].append(np.nan)
+            data_dict['filename'].append(filename)
+            data_dict['id'].append(int(filename.split('-')[0].split('_')[-1]))
 
-        if 'rotation_freq_slope_fit' in info:
-            data_dict['freq_slope'].append(info['rotation_freq_slope_fit']['freq'])
-            data_dict['err_slope'].append(info['rotation_freq_slope_fit']['err'])
-        for mode in ['x', 'y', 'z', 'r', 'r-unwrap']:
-            if mode in info:
-                data_dict['freq_' + mode + '_mode'].append(info[mode])
-            else:
-                data_dict['freq_' + mode + '_mode'].append(np.nan)
-            if mode+'_power' in info:
-                data_dict['power_' + mode + '_mode'].append(info[mode+'_power'])
-            else:
-                data_dict['power_' + mode + '_mode'].append(np.nan)
-        data_dict['filename'].append(filename)
-        data_dict['id'].append(int(filename.split('-')[0].split('_')[-1]))
+        # video parameter
+        info = info_in['info']
+        for key in ['FrameCount', 'FrameRate']:
+            data_dict[key].append(info[key])
+
 
 
     df = pd.DataFrame.from_dict(data_dict)

@@ -355,12 +355,24 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     # ellipse center, size and angle
     data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
 
+
     # generate image that shows the detected features
     if return_features:
+
+        # major axis
+
+        maj_ax = (np.asarray(ellipse[0], dtype=int),
+                  np.asarray([
+                      ellipse[0][0] + 0.5*ellipse[1][0] * np.cos(np.radians(ellipse[2])),
+                      ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.radians(ellipse[2]))
+                  ],dtype=int))
+
         features = [
             Feature('contour', contour_magnet, None),
             Feature('contour', contour_magnet_hull, None),
-            Feature('point', (int(cX), int(cY)), None)]
+            Feature('point', (int(cX), int(cY)), None),
+            Feature('line', maj_ax, None)]
+
 
         # for cont in contours:
         #     features += [Feature('contour', cont, None)]
@@ -792,6 +804,11 @@ def add_features_to_image(image, feature_list, verbose=False):
             # pt2 = (pt1[0]+feature[2], pt1[1]+feature[3])
             pt2 = tuple(feature.data[2:4])
             cv.rectangle(image, pt1, pt2, (255, 0, 0), 1)
+        elif feature.type == 'line':
+            # if verbose:
+            pt1 = tuple(feature.data[0])
+            pt2 = tuple(feature.data[1])
+            cv.line(image, pt1, pt2, (255, 0, 0), 2)
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
                           verbose = False, parameters=None):

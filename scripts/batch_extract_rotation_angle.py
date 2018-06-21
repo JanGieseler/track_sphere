@@ -67,7 +67,6 @@ elif experiment == 'long term run r-unwrap':
     position_file_names = get_position_file_names(source_folder_positions, method=method)
     # select the subset of interest
     position_file_names = position_file_names[29:]  # all
-
 elif experiment == 'long term run 2 fit slope':
 
     analysis_method = 3
@@ -77,8 +76,6 @@ elif experiment == 'long term run 2 fit slope':
     # position_file_names = position_file_names[29:]  # all
     # position_file_names = position_file_names[48:]
     position_file_names = position_file_names[29:]
-
-
 elif experiment == 'run':
     run = 19
     position_file_names = get_position_file_names(source_folder_positions, method=method)
