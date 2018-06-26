@@ -342,9 +342,8 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     else:
         contour_magnet_hull = contour_magnet
 
-    M = cv.moments(contour_magnet)
-    cX = M["m10"] / M["m00"]
-    cY = M["m01"] / M["m00"]
+
+
 
 
     if verbose:
@@ -357,9 +356,17 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     else:
         ellipse = [(None, None), (None, None), None]
 
+    if ellipse[0] is not (None, None):
+        # ellipse center
+        cX, cY = ellipse[0]
+    else:
+        # contour center
+        M = cv.moments(contour_magnet_hull)
+        cX = M["m10"] / M["m00"]
+        cY = M["m01"] / M["m00"]
 
-    # contour center
     data = [cX, cY]
+
 
     # ellipse center, size and angle
     data += list(ellipse[0]) + list(ellipse[1]) + [ellipse[2]]
