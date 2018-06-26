@@ -319,8 +319,17 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
 
     # keep only the contours without a parent, i.e. only outer contours
     contours = [c for h, c in zip(hierarchy, contours) if h[-1] == -1]
-    # now select the longest contour
-    contour_magnet = max(contours, key=len)
+
+    if parameters['select_contour'] == 'longest':
+        #  select the longest contour
+        contour_magnet = max(contours, key=len)
+    elif parameters['select_contour'] == 'all':
+        # compbine all contours into a single one
+        contour_magnet = np.vstack(contours)
+    else:
+        raise ValueError('unknown value of select_contour parameter')
+
+
 
     if verbose:
         print('area of contour', cv.contourArea(contour_magnet))
@@ -475,6 +484,9 @@ def check_method_parameters(parameters, info=None, verbose=False):
 
         if 'convex_hull' not in parameters['extraction_parameters']:
             parameters['extraction_parameters']['convex_hull'] = True
+
+        if 'select_contour' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['select_contour'] = 'longest'  # longest or all
         if parameters['extraction_parameters']['threshold'] in ('mean', 'gaussian'):
             # Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
             if 'blockSize' not in parameters['extraction_parameters']:

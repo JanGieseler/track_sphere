@@ -22,10 +22,10 @@ if case == 'extract all 20180607_Sample_6_bead_1':
 
     export_video = False
     output_fps = 2
-    # output_images = 1000
+    output_images = 1000
     output_images = 10000
 
-    # max_frame = 2000
+    # max_frame = 25000
     max_frame = None
     min_frame = 0
 
@@ -39,10 +39,15 @@ if case == 'extract all 20180607_Sample_6_bead_1':
     extraction_parameters = {'method': method}
     process_parameters = {'process_method': process_method}
     ################################################################################
-    #### for real data: 20180607_Sample6_bead_1
+    #### preprocessing morph parameters
     ################################################################################
-    extraction_parameters['blockSize'] = 51
+    extraction_parameters['blockSize'] = 51  # 35 default
     extraction_parameters['convex_hull'] = True
+
+    extraction_parameters['k_size_close'] = 11  # 11 default
+    extraction_parameters['k_size_noise'] = 3  # 3 default
+    extraction_parameters['c'] = 11  # 11 default
+    extraction_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
     #source folder
     folder_in = '../raw_data/20180607_Sample_6_bead_1/'
 
@@ -50,7 +55,8 @@ if case == 'extract all 20180607_Sample_6_bead_1':
 
 
     video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
-    video_files = video_files[115:]
+
+    video_files = sorted([f for f in video_files if int(f.split('.avi')[0].split('Bead_')[1].split('_')[0]) in list(range(118, 119))])
 
 
 elif case == 'create video relevitate':

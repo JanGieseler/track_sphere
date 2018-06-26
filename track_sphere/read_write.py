@@ -266,7 +266,7 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
         info_time = load_info(filename, folder_positions=source_folder_positions)['info']
 
         if 'File_Modified_Date_Local' in info_time:
-            time = ['File_Modified_Date_Local']
+            time = info_time['File_Modified_Date_Local']
             data_dict['timestamp'].append(time)
             if experiment_begin is not None:
                 time = (datetime.strptime(time.split('.')[0], '%Y-%m-%d %H:%M:%S') - start)
