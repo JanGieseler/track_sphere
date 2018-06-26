@@ -9,7 +9,7 @@ from track_sphere.extract_data_opencv import *
 # select one of the cases, case specific parameters are defined below
 case = 'extract all 20180607_Sample_6_bead_1'
 # case = 'create video relevitate'
-case = 'create video oscillation rotation'
+# case = 'create video oscillation rotation'
 
 ################################################################################
 #### define parameters for each case
@@ -50,6 +50,9 @@ if case == 'extract all 20180607_Sample_6_bead_1':
 
 
     video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = video_files[115:]
+
+
 elif case == 'create video relevitate':
     ################################################################################
     ## method settings ###
@@ -121,6 +124,7 @@ elif case == 'create video oscillation rotation':
     folder_in = '../raw_data/20180607_Sample_6_bead_1/'
 
     video_files = sorted(glob(os.path.join(folder_in, '*96.avi')))
+    video_files = sorted(glob(os.path.join(folder_in, '*36.avi')))
 
 ################################################################################
 #### run the script

@@ -370,19 +370,24 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
     else:
         return return_dict
 
-def get_position_file_names(source_folder_positions, method):
+def get_position_file_names(source_folder_positions, method, runs = None):
     """
 
     Args:
         source_folder_positions: name of folder
         method: extraction method for position information
+        runs: if not non give a list of integers with the run numbers
 
     Returns: all the filenames in the folder source_folder_positions sorted by run id
 
     """
     # get all the files and sort them by the run number
     position_file_names = sorted([os.path.basename(f) for f in glob(source_folder_positions + '*-'+method+'.dat')])
-    position_file_names = sorted(position_file_names, key=lambda f: int(f.split('-')[0].split('Bead_')[1].split('_')[0]))
+
+    if runs is not None:
+        position_file_names = [f for f in position_file_names if int(f.split('-')[0].split('Bead_')[1].split('_')[0]) in runs]
+    position_file_names = sorted(position_file_names,
+                                 key=lambda f: int(f.split('-')[0].split('Bead_')[1].split('_')[0]))
     return position_file_names
 
 

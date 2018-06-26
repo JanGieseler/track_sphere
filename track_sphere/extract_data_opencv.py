@@ -360,12 +360,23 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     if return_features:
 
         # major axis
-
-        maj_ax = (np.asarray(ellipse[0], dtype=int),
-                  np.asarray([
-                      ellipse[0][0] + 0.5*ellipse[1][0] * np.cos(np.radians(ellipse[2])),
-                      ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.radians(ellipse[2]))
-                  ],dtype=int))
+        # from center
+        # maj_ax = (np.asarray(ellipse[0], dtype=int),
+        #           np.asarray([
+        #               ellipse[0][0] + 0.5*ellipse[1][0] * np.cos(np.radians(ellipse[2])),
+        #               ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.radians(ellipse[2]))
+        #           ],dtype=int))
+        # across
+        maj_ax = (
+            np.asarray([
+                ellipse[0][0] + 0.5 * ellipse[1][0] * np.cos(np.radians(ellipse[2])),
+                ellipse[0][1] + 0.5 * ellipse[1][0] * np.sin(np.radians(ellipse[2]))
+            ], dtype=int),
+            np.asarray([
+                ellipse[0][0] + 0.5*ellipse[1][0] * np.cos(np.pi+np.radians(ellipse[2])),
+                ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.pi+np.radians(ellipse[2]))
+            ],dtype=int)
+        )
 
         features = [
             Feature('contour', contour_magnet, None),
