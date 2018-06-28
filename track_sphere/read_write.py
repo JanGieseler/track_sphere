@@ -251,7 +251,7 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
     # create empty dictionary
     data_dict = {'timestamp': [], 'freq_slope': [], 'err_slope': [], 'filename': [], 'id': [],
                  'FrameCount':[], 'FrameRate':[]}
-    for mode in ['x', 'y', 'z', 'r', 'r-unwrap']:
+    for mode in ['x', 'y', 'z', 'r', 'r-unwrap', 'm']:
         data_dict['freq_' + mode + '_mode'] = []
         data_dict['power_' + mode + '_mode'] = []
     if experiment_begin is not None:
@@ -285,7 +285,7 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
                 data_dict['freq_slope'].append(np.nan)
                 data_dict['err_slope'].append(np.nan)
 
-            for mode in ['x', 'y', 'z', 'r', 'r-unwrap']:
+            for mode in ['x', 'y', 'z', 'r', 'r-unwrap', 'm']:
                 if mode in info:
                     data_dict['freq_' + mode + '_mode'].append(info[mode])
                 else:
@@ -298,7 +298,7 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
         else:
             for key in ['freq_slope', 'err_slope']:
                 data_dict[key].append(np.nan)
-            for mode in ['x', 'y', 'z', 'r', 'r-unwrap']:
+            for mode in ['x', 'y', 'z', 'r', 'r-unwrap', 'm']:
                 data_dict['freq_' + mode + '_mode'].append(np.nan)
                 data_dict['power_' + mode + '_mode'].append(np.nan)
 

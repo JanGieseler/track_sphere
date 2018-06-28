@@ -16,7 +16,7 @@ method = 'fit_ellipse'
 
 experiment = 'long term run 2 x'
 experiment = 'long term run 2 y'
-experiment = 'long term run 2 xyz'
+experiment = 'long term run 5 xyzm'
 
 print_only_names = True
 print_only_names = False
@@ -62,6 +62,14 @@ elif experiment == 'long term run 2 xyz':
     # select the subset of interest
     position_file_names = position_file_names[29:]  # all
 
+elif experiment == 'long term run 5 xyzm':
+
+    modes = 'xyzm'
+    interval_width = [1, 1, 5, 40]
+    interval_width_zoom = [0.5, 0.5, 2, 10]
+    fo = [61, 58.5, 70, 550]
+
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(118, 180)))
 ################################################################################
 #### run the script
 ################################################################################
@@ -69,22 +77,25 @@ if print_only_names:
     analysis_method = 0
 axes = None
 
+assert len(modes) == len(interval_width)
+assert len(modes) == len(fo)
+assert len(modes) == len(interval_width_zoom)
+
 for i, filename in enumerate(position_file_names):
 
     print(filename)
 
 
     # ================================================
-    # ==== method 1 = get the frequency from fft for single mode
+    # ==== get the frequency from fft for single mode
     # ================================================
-    if analysis_method == 1:
-        data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
-
+    data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
+    for i, mode in enumerate(modes):
         # retrieve frequencies and figure
         fig, axes, freqs = get_mode_frequency_fft(data, mode, info, return_figure=True,
-                                              interval_width=interval_width,
-                                              interval_width_zoom=interval_width_zoom,
-                                              fo=fo)
+                                              interval_width=interval_width[i],
+                                              interval_width_zoom=interval_width_zoom[i],
+                                              fo=fo[i])
 
         # save figure
         image_filename = os.path.join(image_folder, filename.replace('.dat', '-' + mode + '-fft.png'))
@@ -95,26 +106,5 @@ for i, filename in enumerate(position_file_names):
         for key, value in freqs.items():
             print(key, value)
             update_info(filename, key, value, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
-    # ================================================
-    # ==== method 2 = get the frequency from fft for all modes
-    # ================================================
-    elif analysis_method == 2:
-        data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
-        for i, mode in enumerate(['x', 'y', 'z']):
-            # retrieve frequencies and figure
-            fig, axes, freqs = get_mode_frequency_fft(data, mode, info, return_figure=True,
-                                                  interval_width=interval_width[i],
-                                                  interval_width_zoom=interval_width_zoom,
-                                                  fo=fo[i])
-
-            # save figure
-            image_filename = os.path.join(image_folder, filename.replace('.dat', '-' + mode + '-fft.png'))
-            fig.savefig(image_filename)
-            plt.close(fig)
-
-            # update info (json) file
-            for key, value in freqs.items():
-                print(key, value)
-                update_info(filename, key, value, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
 
 

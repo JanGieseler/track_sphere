@@ -58,7 +58,7 @@ if case == 'extract all 20180607_Sample_6_bead_1':
 
     # video_files = sorted([f for f in video_files if int(f.split('.avi')[0].split('Bead_')[1].split('_')[0]) in list(range(118, 119))])
     video_files = sorted(
-        [f for f in video_files if int(f.split('.avi')[0].split('Bead_')[1].split('_')[0]) in list(range(124, 180))])
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_')[1].split('_')[0]) in list(range(154, 180))])
 
 
 elif case == 'create video relevitate':

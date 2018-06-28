@@ -414,6 +414,8 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
 
     if mode == 'r':
         x = data['ellipse angle']
+    elif mode == 'm':
+        x = data['ellipse y']
     elif mode == 'r-unwrap':
         x = data['ellipse angle']
         x = np.unwrap(x, get_wrap_angle(x))

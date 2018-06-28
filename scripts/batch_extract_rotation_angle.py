@@ -17,6 +17,8 @@ experiment = 'long term run 2a'
 experiment = 'long term run 2 fit slope'
 experiment = 'long term run r-unwrap'
 # experiment = 'long term run r-mode'
+experiment = 'long term run 5 fit slope'
+experiment = 'long term run 5 r-mode'
 
 print_only_names = True
 print_only_names = False
@@ -76,6 +78,20 @@ elif experiment == 'long term run 2 fit slope':
     # position_file_names = position_file_names[29:]  # all
     # position_file_names = position_file_names[48:]
     position_file_names = position_file_names[29:]
+elif experiment == 'long term run 5 fit slope':
+
+    analysis_method = 3
+    # get all the files and sort them by the run number
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(140, 180)))
+elif experiment == 'long term run 5 r-mode':
+
+    interval_width = None
+    interval_width_zoom = 0.9
+    fo = None
+    analysis_method = 2
+    mode = 'r'
+    # get all the files and sort them by the run number
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(118, 180)))
 elif experiment == 'run':
     run = 19
     position_file_names = get_position_file_names(source_folder_positions, method=method)
