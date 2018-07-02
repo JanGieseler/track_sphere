@@ -17,6 +17,7 @@ method = 'fit_ellipse'
 experiment = 'long term run 2 x'
 experiment = 'long term run 2 y'
 experiment = 'long term run 5 xyzm'
+experiment = 'long term run 6 xyzm'
 
 print_only_names = True
 print_only_names = False
@@ -70,6 +71,16 @@ elif experiment == 'long term run 5 xyzm':
     fo = [61, 58.5, 70, 550]
 
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(118, 180)))
+
+elif experiment == 'long term run 6 xyzm':
+
+    source_folder_positions = '../processed_data/20180628_Sample_6_Bead_1/position_data/'
+    modes = 'xyzm'
+    interval_width = [1, 1, 5, 40]
+    interval_width_zoom = [0.5, 0.5, 2, 10]
+    fo = [40, 38, 70, 540]
+
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(0, 4)))
 ################################################################################
 #### run the script
 ################################################################################

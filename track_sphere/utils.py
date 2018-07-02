@@ -370,7 +370,7 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
     else:
         return return_dict
 
-def get_position_file_names(source_folder_positions, method, runs = None):
+def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bead_1', runs = None):
     """
 
     Args:
@@ -385,9 +385,9 @@ def get_position_file_names(source_folder_positions, method, runs = None):
     position_file_names = sorted([os.path.basename(f) for f in glob(source_folder_positions + '*-'+method+'.dat')])
 
     if runs is not None:
-        position_file_names = [f for f in position_file_names if int(f.split('-')[0].split('Bead_')[1].split('_')[0]) in runs]
+        position_file_names = [f for f in position_file_names if int(f.split('-')[0].split(tag)[1].split('_')[1]) in runs]
     position_file_names = sorted(position_file_names,
-                                 key=lambda f: int(f.split('-')[0].split('Bead_')[1].split('_')[0]))
+                                 key=lambda f: int(f.split('-')[0].split(tag)[1].split('_')[1]))
     return position_file_names
 
 

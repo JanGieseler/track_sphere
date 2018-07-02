@@ -12,6 +12,9 @@ from track_sphere.utils import get_position_file_names, power_spectral_density
 
 source_folder_positions = '../processed_data/20180607_Sample_6_bead_1/position_data/'
 target_folder_spectra = '../processed_data/20180607_Sample_6_bead_1/psd_data/'
+
+
+
 # image_folder = '../images/20180607_Sample_6_bead_1/modes/'
 method = 'fit_ellipse'
 
@@ -23,6 +26,8 @@ dataset = 'relaxation_run5b'
 dataset = 'relaxation_run5c'
 # dataset = 'relaxation_run5d'
 dataset = 'relaxation_run5g'
+dataset = 'relaxation_run6'
+# dataset = 'relaxation_run7'
 ################################################################################
 ## end settings ###
 ################################################################################
@@ -58,6 +63,16 @@ elif dataset == 'relaxation_run2':
     position_file_names = get_position_file_names(source_folder_positions, method=method)
     position_file_names = position_file_names[7:16]  # all
     modes = 'xy'
+elif dataset == 'relaxation_run6':
+    source_folder_positions = '../processed_data/20180628_Sample_6_Bead_1/position_data/'
+    target_folder_spectra = '../processed_data/20180628_Sample_6_Bead_1/psd_data/'
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(0, 4)))
+    modes = 'xyr'
+elif dataset == 'relaxation_run7':
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(4, 123)))
+    modes = 'xyr'
+
+
 
 ################################################################################
 #### run the script
