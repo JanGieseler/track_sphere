@@ -27,7 +27,8 @@ dataset = 'relaxation_run5c'
 # dataset = 'relaxation_run5d'
 dataset = 'relaxation_run5g'
 dataset = 'relaxation_run6'
-# dataset = 'relaxation_run7'
+dataset = 'relaxation_run7a'
+dataset = 'relaxation_run7b'
 ################################################################################
 ## end settings ###
 ################################################################################
@@ -68,10 +69,16 @@ elif dataset == 'relaxation_run6':
     target_folder_spectra = '../processed_data/20180628_Sample_6_Bead_1/psd_data/'
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(0, 4)))
     modes = 'xyr'
-elif dataset == 'relaxation_run7':
-    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(4, 123)))
+elif dataset == 'relaxation_run7a':
+    source_folder_positions = '../processed_data/20180628_Sample_6_Bead_1/position_data/'
+    target_folder_spectra = '../processed_data/20180628_Sample_6_Bead_1/psd_data/'
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(5, 20)))
     modes = 'xyr'
-
+elif dataset == 'relaxation_run7b':
+    source_folder_positions = '../processed_data/20180628_Sample_6_Bead_1/position_data/'
+    target_folder_spectra = '../processed_data/20180628_Sample_6_Bead_1/psd_data/'
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(22, 38)))
+    modes = 'xyzr'
 
 
 ################################################################################
@@ -88,13 +95,15 @@ psd_data = { m:[] for m in modes}
 
 for i, filename in enumerate(position_file_names):
     print(filename)
-
+#
     # info = load_info(filename, folder_positions=source_folder_positions, verbose=False, return_filname=False)
     data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
 
     for mode in modes:
         if mode == 'r':
             x = data['ellipse angle'][0:nmax]
+        elif mode == 'z':
+            x = data['ellipse a'][0:nmax] * data['ellipse b'][0:nmax]
         else:
             x = data['ellipse ' + mode][0:nmax]
         x -= np.mean(x)

@@ -73,6 +73,7 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
 
     # max_frame = 25000
     max_frame = None
+    # max_frame = 100
     min_frame = 0
 
     process_method = 'morph'
@@ -84,17 +85,30 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
     ################################################################################
     extraction_parameters = {'method': method}
     process_parameters = {'process_method': process_method}
+    process_parameters['k_size_close'] = 11  # 11 default
+    process_parameters['k_size_noise'] = 5  # 3 default
+    process_parameters['c'] = 11  # 11 default
+    process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
+    # process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    process_parameters['blockSize'] = 71  # 35 default
+
+    # process_parameters['threshold_type'] = 'gauss'  # default is mean maxval
+    # process_parameters['maxval'] = 150  # default is 255
+
     ################################################################################
     #### preprocessing morph parameters
     ################################################################################
-    extraction_parameters['blockSize'] = 51  # 35 default
+
     extraction_parameters['convex_hull'] = True
 
-    extraction_parameters['k_size_close'] = 11  # 11 default
-    extraction_parameters['k_size_noise'] = 5  # 3 default
-    extraction_parameters['c'] = 11  # 11 default
-    extraction_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
-    extraction_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+
+    # extraction_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    #
+    # extraction_parameters['blockSize'] = 21
+    # extraction_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
+    # extraction_parameters['c'] = 11  # 11 default
+    # extraction_parameters['k_size_close'] = 5  # 11 default
+    # extraction_parameters['k_size_noise'] = 3  # 3 default
     #source folder
     folder_in = '../raw_data/20180628_Sample_6_Bead_1/'
 
@@ -108,12 +122,10 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
 
     # video_files = sorted([f for f in video_files if int(f.split('.avi')[0].split('Bead_')[1].split('_')[0]) in list(range(118, 119))])
     video_files = sorted(
-        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(0, 180))])
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(0, 200))])
 
-    video_files = [video_files[1]]
-
-
-
+    # video_files = [video_files[18]]
+    video_files = video_files[54:55]
 
 elif case == 'create video relevitate':
     ################################################################################
@@ -194,7 +206,7 @@ elif case == 'create video oscillation rotation':
 for f in video_files:
 
     filename_in = os.path.basename(f)
-    print(filename_in)
+    print('file: ', filename_in)
 
     export_parameters = {
         'export_video': export_video,

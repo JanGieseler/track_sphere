@@ -6,6 +6,7 @@ import numpy as np
 from track_sphere.read_write import grab_frame
 
 from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle, get_rotation_frequency
+from track_sphere.read_write import load_time_trace
 from track_sphere.plot_utils import annotate_frequencies
 
 def plot_ellipse_spectra(data, info, annotation_dict={}, freq_range=None, n_avrg=None, plot_type = 'lin', verbose=False, normalize=True, return_data=False, axes = None):
@@ -595,6 +596,75 @@ def plot_rot_angle_dist(data, info, frame_max=100, n_avrg_list = [1,2, 4, 8, 16,
     axes[1,0].set_ylabel('angle (deg)')
 
     return fig, axes
+
+
+def waterfall(position_file_names,source_folder_positions=None, modes='xy', navrg=10, off_set_factor=-3, xlim=None, tag='_Sample_6_Bead_1_', nmax=None, verbose=False):
+    """
+
+    calculated the psds and plots them as a waterfall plot
+
+    Args:
+        position_file_names:
+        modes:
+        navrg:
+        off_set_factor:
+        xlim:
+        tag:
+        nmax:
+        verbose:
+
+    Returns:
+
+    """
+    fig, ax = plt.subplots(len(modes), 1, sharex=True, figsize=(18, 5 * len(modes)))
+
+    for i, filename in enumerate(position_file_names):
+        run = int(filename.split(tag)[1].split('-')[0])
+        if verbose:
+            print(filename, run)
+        data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
+        dt = 1./info['info']['FrameRate']
+        # calculate the psd
+        psd_data = {}
+        for mode in modes:
+            if mode == 'r':
+                x = data['ellipse angle']
+            elif mode == 'z':
+                x = data['ellipse a'] * data['ellipse b']
+            else:
+                x = data['ellipse ' + mode]
+            x -= np.mean(x)
+            if nmax is not None:
+                x = x[0:nmax]
+            f, p = power_spectral_density(x, time_step=dt)
+            psd_data[mode] = p
+        psd_data['f'] = f
+
+        f = psd_data['f'][1:]  # get rid of first point (DC)
+        f = avrg(f, navrg)  # refold (assume that signal is aliasied)
+        #         f = np.mean(df_modes['FrameRate'])-avrg(f, navrg)  # refold (assume that signal is aliasied)
+
+        for a, mode in enumerate(modes):
+            d = psd_data[mode]  # get data
+            d = avrg(d[1:] * 10 ** (off_set_factor * i), navrg)  # shift on a log scale to get the waterfall effect
+            ax[a].semilogy(f, d, label=str(run), alpha=0.5)  # plot
+
+    if xlim is not None:
+        assert len(xlim) == 2
+        ax[0].set_xlim(xlim)
+    for a, mode in enumerate(modes):
+        ax[a].set_title(mode + ' data')
+    ax[a].set_xlabel('frequency (Hz)')
+    plt.legend(loc=(1, 0.0))
+
+    return fig
+
+
+#     output_image_filename = os.path.join(image_folder,'spectra'+modes+'_over_b-field_zoom.jpg')
+#     fig.savefig(output_image_filename, bbox_inches='tight')
+
+#     output_image_filename = os.path.join(image_folder,'spectra'+modes+'_over_b-field_zoom.jpg')
+#     fig.savefig(output_image_filename, bbox_inches='tight')
 
 # OLD STUFF!!!!
 def plot_video_frame_old_stuff(file_path, frames, xy_position = None, gaussian_filter_width=None, xylim = None, roi = None, ax = None, radius = 3):

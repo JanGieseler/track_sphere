@@ -469,11 +469,19 @@ def check_method_parameters(parameters, info=None, verbose=False):
             parameters['pre-processing']['threshold_high'] = 120
 
         elif parameters['pre-processing']['process_method'] == 'morph':
-            parameters['pre-processing']['maxval'] = 255
-            parameters['pre-processing']['blockSize'] = 35
-            parameters['pre-processing']['c'] = 11
-            parameters['pre-processing']['k_size_noise'] = 3
-            parameters['pre-processing']['k_size_close'] = 11
+            if 'maxval' not in parameters['pre-processing']:
+                parameters['pre-processing']['maxval'] = 255
+            if 'blockSize' not in parameters['pre-processing']:
+                parameters['pre-processing']['blockSize'] = 35
+            if 'c' not in parameters['pre-processing']:
+                parameters['pre-processing']['c'] = 11
+            if 'k_size_noise' not in parameters['pre-processing']:
+                parameters['pre-processing']['k_size_noise'] = 3
+            if 'k_size_close' not in parameters['pre-processing']:
+                parameters['pre-processing']['k_size_close'] = 11
+            if 'threshold_type' not in parameters['pre-processing']:
+                parameters['pre-processing']['threshold_type'] = 'mean'
+
 
     else:
         parameters['pre-processing']['process_method'] = None
@@ -483,24 +491,24 @@ def check_method_parameters(parameters, info=None, verbose=False):
     #### method dependent settings
     ################################################################################
     if method == 'fit_ellipse':
-        if 'threshold' not in parameters['extraction_parameters']:
-            # method_parameters['threshold'] = 100
-            parameters['extraction_parameters']['threshold'] = 'gaussian'
-        if 'maxval' not in parameters['extraction_parameters']:
-            parameters['extraction_parameters']['maxval'] = 255
+        # if 'threshold' not in parameters['extraction_parameters']:
+        #     # method_parameters['threshold'] = 100
+        #     parameters['extraction_parameters']['threshold'] = 'gaussian'
+        # if 'maxval' not in parameters['extraction_parameters']:
+        #     parameters['extraction_parameters']['maxval'] = 255
 
         if 'convex_hull' not in parameters['extraction_parameters']:
             parameters['extraction_parameters']['convex_hull'] = True
 
         if 'select_contour' not in parameters['extraction_parameters']:
             parameters['extraction_parameters']['select_contour'] = 'longest'  # longest or all
-        if parameters['extraction_parameters']['threshold'] in ('mean', 'gaussian'):
-            # Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
-            if 'blockSize' not in parameters['extraction_parameters']:
-                parameters['extraction_parameters']['blockSize'] = 21
-            # Constant subtracted from the mean or weighted mean (see the details below). Normally, it is positive but may be zero or negative as well.
-            if 'c' not in parameters['extraction_parameters']:
-                parameters['extraction_parameters']['c'] = 2
+        # if parameters['extraction_parameters']['threshold'] in ('mean', 'gaussian'):
+        #     # Size of a pixel neighborhood that is used to calculate a threshold value for the pixel: 3, 5, 7, and so on.
+        #     if 'blockSize' not in parameters['extraction_parameters']:
+        #         parameters['extraction_parameters']['blockSize'] = 21
+        #     # Constant subtracted from the mean or weighted mean (see the details below). Normally, it is positive but may be zero or negative as well.
+        #     if 'c' not in parameters['extraction_parameters']:
+        #         parameters['extraction_parameters']['c'] = 2
 
     elif method == 'features_surf':
         if parameters['extraction_parameters'] is None:
@@ -712,8 +720,14 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
 
         k_size_noise = parameters['k_size_noise']
         k_size_close = parameters['k_size_close']
-        # frame_out = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, blockSize, c)
-        frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, blockSize, c)
+        threshold_type = parameters['threshold_type']
+        if threshold_type == 'gauss':
+            frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, blockSize, c)
+        elif threshold_type == 'mean':
+            frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, blockSize, c)
+        else:
+            raise TypeError
+
 
         frame_out = cv.bitwise_not(frame_out)
 
