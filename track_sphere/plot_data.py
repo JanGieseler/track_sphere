@@ -521,7 +521,7 @@ def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_fra
         window_length: integration window for calculation of the energy should be much larger than typical freq and much smaller than decay time
         start_frame:
         end_frame:
-        frequency_range: 
+        frequency_range:
         ax:
         verbose:
         return_data:
@@ -531,8 +531,10 @@ def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_fra
     """
     if ax is None:
         fig, ax = plt.subplots(1, 1)
+    else:
+        fig = None
 
-        N_frames = len(x) # total number of frames
+    N_frames = len(x) # total number of frames
 
     if end_frame is None:
         end_frame = N_frames
@@ -565,7 +567,7 @@ def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_fra
         return fig, ax
 
 
-def plot_fit_exp_decay(t, x, t_min=0, t_max=None, return_data=False, axes=None):
+def plot_fit_exp_decay(t, x, t_min=0, t_max=None, return_data=False, axes=None, verbose=False):
     """
     plots the energy x over time between t_min and t_max and fits to an exponential decay
 
@@ -589,8 +591,10 @@ def plot_fit_exp_decay(t, x, t_min=0, t_max=None, return_data=False, axes=None):
 
     if axes is None:
         fig, axes = plt.subplots(1, 1)
+    else:
+        fig = None
 
-    fit = fit_exp_decay(t, x, offset=True, verbose=True)
+    fit = fit_exp_decay(t, x, offset=True, verbose=verbose)
 
     axes.plot(t2, x2, 'o')
     axes.plot(t2, exp_offset(t2, *fit[0]))
@@ -598,7 +602,7 @@ def plot_fit_exp_decay(t, x, t_min=0, t_max=None, return_data=False, axes=None):
     axes.set_ylabel('energy')
 
     if return_data:
-        return fig, axes, (t2, x2, fit)
+        return fig, axes, fit
     else:
         return fig, axes
 
