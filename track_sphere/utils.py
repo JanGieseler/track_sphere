@@ -424,11 +424,18 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
         fo: center of range where to look for peak, if None take center of full range
         verbose:
         n_smooth: if not None avrg n_smooth values to smoothen the spectra
+        aliasing: if True, freq is aliased and we calculate the real freq. as fps - f_max
     Returns:
 
     """
     time_step = 1 / info['info']['FrameRate']
     freqs = {}
+
+    # if the target freq is larger than the Nyquist freq., the actual freq gets folded back
+    if fo >info['info']['FrameRate']/2:
+        aliasing = True
+    else:
+        aliasing = False
 
     if mode == 'r':
         x = data['ellipse angle']
@@ -447,6 +454,9 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
     f, p = power_spectral_density(x, time_step, frequency_range=None)
 
 
+    if aliasing:
+        fo = info['info']['FrameRate']-fo
+
     if interval_width is None:
         frequency_range = (min(f[1:]), max(f))  # for the minimum ignore the first value because this is DC
     else:
@@ -464,12 +474,19 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
     P = p2[bRange]
 
     freqs[mode] = F[np.argmax(P)]
+
     df = np.mean(np.diff(F))
 
     frequency_range_zoom = (freqs[mode] - 0.5 * interval_width_zoom, freqs[mode] + 0.5 * interval_width_zoom)
     bRange_zoom = np.all([(F >= frequency_range_zoom[0]), (F <= frequency_range_zoom[1])], axis=0)
+
     F_zoom = F[bRange_zoom]
     P_zoom = P[bRange_zoom]
+
+    if aliasing:
+        freqs[mode] = info['info']['FrameRate']-freqs[mode]
+        F_zoom = info['info']['FrameRate']-F_zoom
+
 
     freqs[mode + '_power'] = np.sum(P_zoom) * df
 

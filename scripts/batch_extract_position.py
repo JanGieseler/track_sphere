@@ -126,7 +126,7 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
         [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(0, 200))])
 
     # video_files = [video_files[18]]
-    video_files = video_files[67:]
+    video_files = video_files[73:]
     # video_files = video_files[71:72]
 
 elif case == 'create video relevitate':

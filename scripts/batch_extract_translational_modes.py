@@ -20,9 +20,9 @@ experiment = 'long term run 5 xyzm'
 experiment = 'long term run 6 xyzm'
 experiment = 'long term run 7 xy'
 experiment = 'long term run 7b xyz'
+experiment = 'long term run 7c xy alias'
 print_only_names = True
 print_only_names = False
-
 
 
 
@@ -101,6 +101,17 @@ elif experiment == 'long term run 7b xyz':
     fo = [500, 570]
 
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(22, 38)))
+
+elif experiment == 'long term run 7c xy alias':
+
+    source_folder_positions = '../processed_data/20180628_Sample_6_Bead_1/position_data/'
+    image_folder = '../images/20180628_Sample_6_bead_1/modes/'
+    modes = 'xy'
+    interval_width = [20, 20]
+    interval_width_zoom = [1, 1]
+    fo = [834, 810]
+
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(63, 74)))
 ################################################################################
 #### run the script
 ################################################################################
@@ -117,9 +128,9 @@ for i, filename in enumerate(position_file_names):
     print(filename)
 
 
-    # ================================================
-    # ==== get the frequency from fft for single mode
-    # ================================================
+    # # ================================================
+    # # ==== get the frequency from fft for single mode
+    # # ================================================
     data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
     for i, mode in enumerate(modes):
         # retrieve frequencies and figure
