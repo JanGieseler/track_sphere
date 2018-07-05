@@ -5,7 +5,7 @@ from matplotlib.patches import Rectangle, Circle
 import numpy as np
 from track_sphere.read_write import grab_frame
 
-from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle, get_rotation_frequency
+from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle, get_rotation_frequency, fit_exp_decay, exp_offset
 from track_sphere.read_write import load_time_trace
 from track_sphere.plot_utils import annotate_frequencies
 
@@ -512,27 +512,95 @@ def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1
     else:
         return fig, ax
 
-def plot_timetrace(x, time_step, window_length =1, start=None, end =None, start_end_unit = 'frames', ax = None, verbose = False):
+def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_frame=None, frequency_range= None, ax = None, verbose = False, return_data=False):
     """
-    Takes a file or sequential files with a set of bead positions (such as created by extract_motion), and computes and plots the ringdown
-    filepaths: a list of filepaths to .csv files containing the bead position trace in (x,y) coordinates
-    frequency: oscillation frequency of mode
-    window_width: width of window centered on frequency over which to integrate
-    fps: frame rate in frames per second of the data
-    bead_diameter: diameter (in um) of the bead
-    axis: either 'x' or 'y', specifies which direction to look at oscillations in (if using the reflection on
-        the right wall, this is x for z mode, y for xy modes)
-    starting_frame: all frames before this one will not be included
-    save_filename: if provided, uses this path to save the plot, otherwise saves in the original filepath .png
+
+    Args:
+        x: position time trace
+        time_step:
+        window_length: integration window for calculation of the energy should be much larger than typical freq and much smaller than decay time
+        start_frame:
+        end_frame:
+        frequency_range: 
+        ax:
+        verbose:
+        return_data:
+
+    Returns:
+
     """
     if ax is None:
         fig, ax = plt.subplots(1, 1)
+
+        N_frames = len(x) # total number of frames
+
+    if end_frame is None:
+        end_frame = N_frames
+
+
+
+    N_windows = (end_frame-start_frame)/window_length # number of windows
+    N_windows = int(np.floor(N_windows))
+
+    print('total number of frames:\t\t{:d}'.format(N_frames))
+    print('total number of windows:\t{:d}'.format(N_windows))
+
+    # reshape the timetrace such that each row is a window
+    X = x[start_frame:start_frame+window_length*N_windows].reshape(N_windows, window_length)
+    P = []
+    for id, x in enumerate(X):
+        f, p = power_spectral_density(x, time_step, frequency_range=frequency_range)
+        P.append(p)
+
+    # now calculate the energy
+    x = np.sum(P, axis=1)
 
     time = np.arange(len(x)) * time_step * window_length
     ax.plot(time, x)
     ax.set_xlabel('time (s)')
 
-    return fig, ax
+    if return_data:
+        return fig, ax, (time, x)
+    else:
+        return fig, ax
+
+
+def plot_fit_exp_decay(t, x, t_min=0, t_max=None, return_data=False, axes=None):
+    """
+    plots the energy x over time between t_min and t_max and fits to an exponential decay
+
+    Args:
+        t:
+        x:
+        t_min:
+        t_max:
+        return_data:
+        axes:
+
+    Returns:
+
+    """
+    x2 = x[t > t_min]
+    t2 = t[t > t_min]
+
+    if t_max is not None:
+        x2 = x2[t2 < t_max]
+        t2 = t2[t2 < t_max]
+
+    if axes is None:
+        fig, axes = plt.subplots(1, 1)
+
+    fit = fit_exp_decay(t, x, offset=True, verbose=True)
+
+    axes.plot(t2, x2, 'o')
+    axes.plot(t2, exp_offset(t2, *fit[0]))
+    axes.set_xlabel('time (s)')
+    axes.set_ylabel('energy')
+
+    if return_data:
+        return fig, axes, (t2, x2, fit)
+    else:
+        return fig, axes
 
 def plot_tracking_error(data, methods):
 
@@ -660,109 +728,6 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
     return fig
 
 
-#     output_image_filename = os.path.join(image_folder,'spectra'+modes+'_over_b-field_zoom.jpg')
-#     fig.savefig(output_image_filename, bbox_inches='tight')
-
-#     output_image_filename = os.path.join(image_folder,'spectra'+modes+'_over_b-field_zoom.jpg')
-#     fig.savefig(output_image_filename, bbox_inches='tight')
-
-# OLD STUFF!!!!
-def plot_video_frame_old_stuff(file_path, frames, xy_position = None, gaussian_filter_width=None, xylim = None, roi = None, ax = None, radius = 3):
-    """
-
-    plots frames of the video
-
-    Args:
-        file_path: path to video file
-        frames: integer or list of integers of the frames to be plotted
-        xy_position: xy position of the magnet. If provided, this position will be plotted on top of  the image
-        gaussian_filter_width: if not None apply Gaussian filter
-        xylim: xylim to zoom in on a region, if not specified (ie None) show full image
-
-        roi: region of interest, this allows to limit the search to a region of interest with the frame, the structure is
-        roi = [roi_center, roi_dimension], where
-            roi_center = [ro, co], roi_dimension = [h, w], where
-            ro, co is the center of the roi (row, columns) and
-            w, h is the width and the height of the roi
-
-            Note that roi dimensions w, h should be odd numbers!
-
-        radius: sets the radiusof the circle that indicte the position xy
-
-    """
-
-
-    if not hasattr(frames, '__len__'):
-        frames = [frames]
-
-    if ax is None:
-        fig, ax = plt.subplots(1, len(frames))
-        # if frames is an array of len=1, the ax object is not a list, so for the following code we make it into a list
-        if len(frames)==1:
-            ax =[ax]
-    else:
-        fig = None
-
-
-    if not roi is None:
-        [roi_center, roi_dimension] = roi
-
-    v = pims.Video(file_path)
-    video = rgb2gray_pipeline(v)
-
-    if not gaussian_filter_width is None:
-        gaussian_filter_pipeline = pipeline(gaussian_filter)
-        video = gaussian_filter_pipeline(video, gaussian_filter_width)
-
-
-    frame_shape = np.shape(video[frames[0]])
-
-
-    for frame, axo in zip(frames, ax):
-
-        image = video[frame]
-
-
-        axo.imshow(image, cmap='pink')
-        # axo.imshow(video[frame], cmap='pink')
-        if not xy_position is None:
-
-
-
-            # note that we flip the x and y axis, because that is how
-            # axo.plot(xy_position[frame, 1], xy_position[frame, 0], 'xg', markersize = 30, linewidth = 4)
-            circ = Circle((xy_position[frame, 1], xy_position[frame, 0]), radius =radius, linewidth=2, edgecolor='g', facecolor='none')
-            axo.add_patch(circ)
-
-            # plot also the positions obtained with center-of-mass
-            if len ( xy_position[frame]) == 4:
-                circ = Circle((xy_position[frame, 3], xy_position[frame, 2]), radius=radius, linewidth=2, edgecolor='r',
-                              facecolor='none')
-                axo.add_patch(circ)
-            # plot also the positions obtained with trackpy
-            if len ( xy_position[frame]) == 6:
-                # axo.plot(xy_position[frame, 3], xy_position[frame, 2], 'xr', markersize=30, linewidth = 2)
-                # the postions in trackpy are the usual x,y order
-                circ = Circle((xy_position[frame, 5], xy_position[frame, 4]), radius=radius, linewidth=2, edgecolor='r',
-                              facecolor='none')
-                axo.add_patch(circ)
-        if xylim is None:
-            xlim = [0, frame_shape[0]]
-            ylim = [0, frame_shape[1]]
-        else:
-            xlim, ylim = xylim
-
-        axo.set_xlim(xlim)
-        axo.set_ylim(ylim)
-        # plt.show()
-
-
-        # Create a Rectangle patch to show roi
-        if not roi is None:
-            rect = Rectangle((int(roi_center[1] - roi_dimension[1] / 2)-1, int(roi_center[0] - roi_dimension[0] / 2)), roi_dimension[1], roi_dimension[0], linewidth=1, edgecolor='r', facecolor='none')
-            axo.add_patch(rect)
-
-    return fig, ax
 
 
 

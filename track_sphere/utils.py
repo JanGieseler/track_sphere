@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from glob import glob
 import operator
 from functools import reduce
+from scipy import optimize
 
 
 def roi_2_roi_tlc(roi):
@@ -247,6 +248,24 @@ def get_rotation_frequency_fit_slope(data, info, n_avrg=1, n_avrg_unwrapped=1, w
         return return_dict
 
 
+
+def get_calibration_factor(data, particle_diameter, verbose=False):
+    """
+    calculates the calibration factor assuming that the particle is roughly spherical
+    Args:
+        data: pandas dataframe with 'ellipse a' and 'ellipse b' columns
+        particle_diameter: diameter of partile in um
+        verbose:
+
+    Returns:
+
+    """
+
+    x = np.sqrt(data['ellipse a']*data['ellipse b'])
+    if verbose:
+        print('calibration factor: (um/px)', particle_diameter/np.mean(x))
+    return {'calibration factor: (um/px)': particle_diameter/np.mean(x)}
+
 def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None, angle_min=50, angle_max=130, nmax=100, axes=None):
     """
     calculate the rotation frequency from a time trace of angle data, the assumption is that the rotation is constant
@@ -390,7 +409,6 @@ def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bea
                                  key=lambda f: int(f.split('-')[0].split(tag)[1].split('_')[1]))
     return position_file_names
 
-
 def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width=None, interval_width_zoom=0.1, fo=None,
                            verbose=False, n_smooth=None):
 
@@ -489,6 +507,126 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
     else:
         return freqs
 
+
+def get_ampfreqphase_FFT(qx, dt, n0 = 0, f_range = None, return_Spectra = False):
+    '''
+    returns estimate of amplitdue, frequency and phase from FFT
+
+    [ax, wx, phi] = get_ampfreqphase_FFT(qx, dt,n0 = 0, f_range=None, return_Spectra = False)
+    [ax, wx, phi], [Fx, Ax] = get_ampfreqphase_FFT(qx, dt,n0 = 0, f_range=None, return_Spectra = True)
+    input:
+        qx: time trace  sampled at intervals dt
+        dt: sampling interval
+
+    input (optional):
+        n0 = t0/dt: index of time zero
+        f_range = [f_x, df]: frequency is looked in intervals f_x +-df respectively
+        return_Spectra = True/False: returns spectra over range f_range in addition to [phi, ax, fx]
+
+    output:
+        dominant angular frequency, amplitude at that frequency and phase
+        method: get fourier component of max signals
+    '''
+
+    n = len(qx)
+    f = np.fft.fftfreq(n, dt)[0:int(n/2)]
+
+    # look for max frequencies only in certain range
+    if f_range is None:
+        irange_x = np.arange(int(n/2))
+    else:
+        [f_x, df] = f_range
+        imin = np.argwhere(f >= f_x-df)[0,0]
+        imax = np.argwhere(f <= f_x+df)[-1,0] + 1
+        irange_x = np.arange(imax-imin+1)+imin
+
+    # convert to int (from float)
+    irange_x = [int(x) for x in irange_x]
+
+    # Fourier transforms (remove offset, in case there is a large DC)
+    Ax = np.fft.fft(qx-np.mean(qx))[irange_x] / n*2
+    Fx = f[irange_x]
+
+    # frequency and amplitude x
+    i_max_x = np.argmax(np.abs(Ax))
+    fx = Fx[i_max_x]
+    ax = np.abs(Ax[i_max_x])
+    # phase
+    phi = np.angle(Ax[i_max_x] * np.exp(-1j *2 * np.pi * fx * n0))
+
+    if return_Spectra == True:
+        return [ax, 2*np.pi*fx, phi], [Fx, Ax]
+    else:
+        return [ax, 2*np.pi*fx, phi]
+
+
+def fit_exp_decay(t, y, offset=False, verbose=False):
+    """
+    fits the data to a decaying exponential, with or without an offset
+    Args:
+        t: x data
+        y: y data
+        offset: False if fit should decay to y=0, True otherwise
+        verbose: prints results to screen
+
+    Returns: fit parameters, either [ao, tau, offset] if offset is True, or or [ao, tau] if offset is False
+            ao: amplitude above offset (or zero if offset is False)
+            tau: decay parameter
+            offset: asymptotic value as t->INF
+
+    """
+    if verbose:
+        print(' ======= fitting exponential decay =======')
+
+    init_params = estimate_exp_decay_parameters(t, y)
+    if offset:
+        fit = optimize.curve_fit(exp_offset, t, y, p0=init_params)
+    else:
+        fit = optimize.curve_fit(exp, t, y, p0=init_params[0:-1])
+    if verbose:
+        print(('optimization result:', fit))
+
+    return fit
+
+
+def estimate_exp_decay_parameters(t, y):
+    '''
+    Returns an initial estimate for exponential decay parameters. Meant to be used with optimize.curve_fit.
+    Args:
+        t: x data
+        y: y data
+
+    Returns: fit parameter estimate, either [ao, tau, offset] if offset is True, or or [ao, tau] if offset is False
+            ao: amplitude above offset (or zero if offset is False)
+            tau: decay parameter
+            offset: asymptotic value as t->INF
+
+    '''
+    offset = y[-1]
+
+    total_amp = y[0]
+    ao = total_amp - offset
+    decay = t[np.argmin(np.abs(
+        y - (total_amp + offset) / 2))]  # finds time at which the value is closest to midway between the max and min
+
+    return [ao, decay, offset]
+
+
+def exp(t, *params):
+    '''
+    Exponential decay: ao*E^(t/tau)
+    '''
+    ao, tau = params
+
+    return np.exp(-t / tau) * ao
+
+
+def exp_offset(t, *params):
+    '''
+    Exponential decay with offset: ao*E^(t/tau) + offset
+    '''
+    ao, tau, offset = params
+    return np.exp(-t / tau) * ao + offset
 
 # def sequence_pairs(x):
 #     """

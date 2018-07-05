@@ -73,7 +73,8 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
 
     # max_frame = 25000
     max_frame = None
-    # max_frame = 100
+    # max_frame = 1050
+    # min_frame = 1000
     min_frame = 0
 
     process_method = 'morph'
@@ -89,11 +90,11 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
     process_parameters['k_size_noise'] = 5  # 3 default
     process_parameters['c'] = 11  # 11 default
     process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
-    # process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
-    process_parameters['blockSize'] = 71  # 35 default
+    process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    process_parameters['blockSize'] = 101  # 35 default
 
     # process_parameters['threshold_type'] = 'gauss'  # default is mean maxval
-    # process_parameters['maxval'] = 150  # default is 255
+    process_parameters['maxval'] = 255  # default is 255
 
     ################################################################################
     #### preprocessing morph parameters
@@ -125,7 +126,8 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
         [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(0, 200))])
 
     # video_files = [video_files[18]]
-    video_files = video_files[54:55]
+    video_files = video_files[67:]
+    # video_files = video_files[71:72]
 
 elif case == 'create video relevitate':
     ################################################################################
