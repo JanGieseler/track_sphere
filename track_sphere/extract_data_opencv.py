@@ -482,6 +482,10 @@ def check_method_parameters(parameters, info=None, verbose=False):
             if 'threshold_type' not in parameters['pre-processing']:
                 parameters['pre-processing']['threshold_type'] = 'mean'
 
+        elif parameters['pre-processing']['process_method'] == 'roi':
+            parameters['pre-processing']['roi'] = (60, 60, 30, 30)
+
+
 
     else:
         parameters['pre-processing']['process_method'] = None

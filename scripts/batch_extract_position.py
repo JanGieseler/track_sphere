@@ -8,8 +8,11 @@ from track_sphere.extract_data_opencv import *
 
 # select one of the cases, case specific parameters are defined below
 case = 'extract all 20180628_Sample_6_bead_1'
+case = 'extract all 20180628_Sample_6_bead_1 sideview'
 # case = 'create video relevitate'
 # case = 'create video oscillation rotation'
+
+process_parameters = {}
 
 ################################################################################
 #### define parameters for each case
@@ -126,9 +129,51 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
         [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(0, 200))])
 
     # video_files = [video_files[18]]
-    video_files = video_files[73:]
+    video_files = video_files[71:72]
     # video_files = video_files[71:72]
+elif case == 'extract all 20180628_Sample_6_bead_1 sideview':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'Bright px'
 
+    export_video = False
+    output_fps = 2
+    output_images = 1000
+    output_images = 10000
+    output_images = 10
+
+    # max_frame = 25000
+    max_frame = None
+    # max_frame = 1050
+    max_frame = 100
+    min_frame = 0
+
+    # processed_data
+    folder_out = '../processed_data/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    #source folder
+    folder_in = '../raw_data/20180628_Sample_6_Bead_1/'
+
+    extraction_parameters = {'method': method}
+
+
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+
+    f = video_files[0]
+    print(f.split('.avi')[0].split('Bead_1_'))
+
+    # video_files = sorted([f for f in video_files if int(f.split('.avi')[0].split('Bead_')[1].split('_')[0]) in list(range(118, 119))])
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(0, 200))])
+
+    print(video_files[75:78])
+    # files 77-80
+    video_files = video_files[75:76]
+    # video_files = video_files[71:72]
 elif case == 'create video relevitate':
     ################################################################################
     ## method settings ###

@@ -7,8 +7,8 @@ method = 'fit_ellipse'
 particle_diameter=45  # um
 
 # get all the files and sort them by the run number
-position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(60, 180)))
-
+# position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(60, 180)))
+position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(73, 180)))
 
 
 ################################################################################

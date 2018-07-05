@@ -525,6 +525,25 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
         return freqs
 
 
+def power_to_energy_K(x, radius, frequency, calibration_factor, density=7600):
+    """
+
+    scaled the input power to physical units
+
+    Args:
+        x: energy in px^2
+        radius: in um
+        frequency: in Hertz
+        calibration_factor: in um/px
+        density: in kg/m^3
+
+    Returns:
+
+    """
+    mass = density*4*np.pi/3 * radius**3*1e-18
+    kB = 1.38e-23
+    return x*calibration_factor**2*1e-12*mass*(2*np.pi*frequency)**2/kB
+
 def get_ampfreqphase_FFT(qx, dt, n0 = 0, f_range = None, return_Spectra = False):
     '''
     returns estimate of amplitdue, frequency and phase from FFT

@@ -544,25 +544,30 @@ def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_fra
     N_windows = (end_frame-start_frame)/window_length # number of windows
     N_windows = int(np.floor(N_windows))
 
-    print('total number of frames:\t\t{:d}'.format(N_frames))
-    print('total number of windows:\t{:d}'.format(N_windows))
+    if verbose:
+        print('total number of frames:\t\t{:d}'.format(N_frames))
+        print('total number of windows:\t{:d}'.format(N_windows))
 
     # reshape the timetrace such that each row is a window
     X = x[start_frame:start_frame+window_length*N_windows].reshape(N_windows, window_length)
     P = []
+    F = []
     for id, x in enumerate(X):
         f, p = power_spectral_density(x, time_step, frequency_range=frequency_range)
         P.append(p)
+        F.append(f[np.argmax(p)])
 
-    # now calculate the energy
-    x = np.sum(P, axis=1)
+    df = np.mean(np.diff(f))
+
+    # now calculate the energy (P is in units of px^2/Hz or m^2/Hz)
+    x = np.sum(P, axis=1)*df
 
     time = np.arange(len(x)) * time_step * window_length
     ax.plot(time, x)
     ax.set_xlabel('time (s)')
 
     if return_data:
-        return fig, ax, (time, x)
+        return fig, ax, (time, x, F)
     else:
         return fig, ax
 

@@ -111,7 +111,8 @@ elif experiment == 'long term run 7c xy alias':
     interval_width_zoom = [1, 1]
     fo = [834, 810]
 
-    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(63, 74)))
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(63, 77)))
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(75, 79)))
 ################################################################################
 #### run the script
 ################################################################################
