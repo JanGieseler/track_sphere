@@ -29,6 +29,7 @@ dataset = 'relaxation_run5g'
 dataset = 'relaxation_run6'
 dataset = 'relaxation_run7a'
 dataset = 'relaxation_run7b'
+dataset = 'relaxation_run7d'
 ################################################################################
 ## end settings ###
 ################################################################################
@@ -79,6 +80,12 @@ elif dataset == 'relaxation_run7b':
     target_folder_spectra = '../processed_data/20180628_Sample_6_Bead_1/psd_data/'
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(22, 38)))
     modes = 'xyzr'
+elif dataset == 'relaxation_run7d':
+    source_folder_positions = '../processed_data/20180628_Sample_6_Bead_1/position_data/'
+    target_folder_spectra = '../processed_data/20180628_Sample_6_Bead_1/psd_data/'
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(86, 91)))
+    modes = 'xyzr'
+
 
 
 ################################################################################

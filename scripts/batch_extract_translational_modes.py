@@ -20,7 +20,8 @@ experiment = 'long term run 5 xyzm'
 experiment = 'long term run 6 xyzm'
 experiment = 'long term run 7 xy'
 experiment = 'long term run 7b xyz'
-experiment = 'long term run 7c xy alias'
+experiment = 'long term run 7c xyr alias'
+# experiment = 'run 7d xyrz'
 print_only_names = True
 print_only_names = False
 
@@ -102,17 +103,36 @@ elif experiment == 'long term run 7b xyz':
 
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(22, 38)))
 
-elif experiment == 'long term run 7c xy alias':
+elif experiment == 'long term run 7c xyr alias':
 
     source_folder_positions = '../processed_data/20180628_Sample_6_Bead_1/position_data/'
     image_folder = '../images/20180628_Sample_6_bead_1/modes/'
-    modes = 'xy'
-    interval_width = [20, 20]
-    interval_width_zoom = [1, 1]
-    fo = [834, 810]
+    modes = 'xyr'
+    interval_width = [20, 20, 58]
+    interval_width_zoom = [1, 1, 1]
+    fo = [834, 810, 30]
 
-    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(63, 77)))
-    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(75, 79)))
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(91, 102)))
+
+    modes = 'r'
+    interval_width = [58]
+    interval_width_zoom = [1]
+    fo = [30]
+
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(91, 102)))
+
+elif experiment == 'run 7d xyrz':
+
+    source_folder_positions = '../processed_data/20180628_Sample_6_Bead_1/position_data/'
+    image_folder = '../images/20180628_Sample_6_bead_1/modes/'
+    modes = 'xyrz'
+    interval_width = [150, 150, 30, 40]
+    interval_width_zoom = [1, 1, 1, 1]
+    fo = [800, 800, 30, 60]
+
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(86, 91)))
+
+
 ################################################################################
 #### run the script
 ################################################################################

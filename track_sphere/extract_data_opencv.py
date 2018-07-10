@@ -483,7 +483,8 @@ def check_method_parameters(parameters, info=None, verbose=False):
                 parameters['pre-processing']['threshold_type'] = 'mean'
 
         elif parameters['pre-processing']['process_method'] == 'roi':
-            parameters['pre-processing']['roi'] = (60, 60, 30, 30)
+            if 'roi' not in parameters['pre-processing']:
+                parameters['pre-processing']['roi'] = (60, 60, 30, 30)
 
 
 
@@ -745,6 +746,13 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
         if k_size_close > 0:
             kernel_close = cv.getStructuringElement(cv.MORPH_ELLIPSE, (k_size_close, k_size_close))
             frame_out = cv.morphologyEx(frame_out, cv.MORPH_CLOSE, kernel_close, iterations=1)
+
+    elif parameters['process_method'] == 'roi':
+        # print('adsdasda' , parameters['roi'])
+        roi = parameters['roi']
+
+        frame_out = np.zeros(frame.shape, np.uint8)
+        frame_out[roi[0]:roi[0]+roi[2], roi[1]:roi[1]+roi[3]] = frame[roi[0]:roi[0]+roi[2], roi[1]:roi[1]+roi[3]]
 
     elif parameters['process_method'] == None:
         frame_out = frame

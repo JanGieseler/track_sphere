@@ -437,6 +437,8 @@ def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1
 
     if ax is None:
         fig, ax = plt.subplots(1, 1)
+    else:
+        fig = None
 
     if window_ids is None:
         if full_spectrum:

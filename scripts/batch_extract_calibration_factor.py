@@ -4,11 +4,12 @@ from track_sphere.utils import get_calibration_factor, get_position_file_names
 
 source_folder_positions = '../processed_data/20180628_Sample_6_bead_1/position_data/'
 method = 'fit_ellipse'
-particle_diameter=45  # um
+particle_diameter = 45  # um
 
 # get all the files and sort them by the run number
 # position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(60, 180)))
-position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(73, 180)))
+# position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(83, 85)))
+position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(98, 102)))
 
 
 ################################################################################

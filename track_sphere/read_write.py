@@ -4,13 +4,21 @@ import json
 import pandas as pd
 import cv2 as cv
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
+
+from io import StringIO
+from lxml import etree
+
+
+
+import xmltodict as xd
+
 def load_video_info(filename):
     """
     loads the video metadata that has been exported with metainfo (www.MediaArea.net) into a json file
 
     Args:
-        filename: path to the .avi or .xml file
+        filename: path to the .avi or .json file
 
     Returns: ['FileSize', 'FrameRate', 'BitDepth', 'Width', 'Duration', 'FrameCount', 'Height', 'CodecID']
 
@@ -35,6 +43,72 @@ def load_video_info(filename):
     info['filename'] = filename
 
     return info
+
+
+def load_video_info_xml(filename):
+    """
+    loads the video metadata that has been exported with PCC acquisition software (Phantom) into a xml file
+
+    Args:
+        filename: path to the .avi or .xml file
+
+    Returns: ['FileSize', 'FrameRate', 'Width', 'Duration', 'FrameCount', 'Height']
+
+    """
+
+    if len(filename.split('.avi')) == 2:
+        filename = filename.replace('.avi', '.xml')
+
+    print(os.path.normpath(filename))
+    assert os.path.exists(filename)
+
+    # ====== parse xml ======
+
+    # these are the values we want to extract
+    xml_keys = {'FrameRateDouble':'FrameRate', 'ImWidth':'Width', 'ImHeight':'Height',
+                'TotalImageCount':'FrameCount', 'Date':'Date', 'Time':'Time'}
+
+
+    found_date = False
+    found_time = False
+    context = etree.iterparse(filename, events=("start", "end"))
+    # context = etree.iterparse(filename, events=("start"))
+    context = etree.iterparse(filename)
+    c = 0
+
+    return_dict = {}
+    for action, elem in context:
+
+        # if there is one key called frame we skip because this is the time tag for the frame and here we are not interested in this
+        if elem.keys() != []:
+            if elem.keys()[0] == 'frame':
+                continue
+
+        # skip elements FRPShape
+        if elem.tag == 'FRPShape':
+            continue
+
+        if elem.tag in xml_keys.keys():
+            return_dict[xml_keys[elem.tag]] = elem.text
+
+
+    return_dict['File_Modified_Date_Local'] = return_dict['Date'] + ' ' + return_dict['Time']  # combine
+
+    # convert to to different format  of form "2018-07-06 10:25:46.000"
+    time_start = datetime.strptime('.'.join(return_dict['File_Modified_Date_Local'].split('.')[0:-2]), '%a %b %d %Y %H:%M:%S')
+    fractional_seconds = return_dict['File_Modified_Date_Local'].split('.')[1].split(' ')
+    microseconds = float(fractional_seconds[0])*1000+float(fractional_seconds[1])
+    time_start = time_start + timedelta(microseconds=microseconds)
+    return_dict['File_Modified_Date_Local'] = datetime.strftime(time_start, '%Y-%m-%d %H:%M:%S.%f')
+
+    # delete date and time since it is now contained in File_Modified_Date_Local
+    del return_dict['Date']
+    del return_dict['Time']
+
+
+    return return_dict
+
+
 
 
 def load_time_trace(filename, source_folder_positions=None, methods=[], verbose=False):
@@ -250,7 +324,7 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
 
     # create empty dictionary
     data_dict = {'timestamp': [], 'freq_slope': [], 'err_slope': [], 'filename': [], 'id': [],
-                 'FrameCount':[], 'FrameRate':[]}
+                 'FrameCount':[], 'FrameRate':[], 'gamma_energy':[]}
     for mode in ['x', 'y', 'z', 'r', 'r-unwrap', 'm']:
         data_dict['freq_' + mode + '_mode'] = []
         data_dict['power_' + mode + '_mode'] = []
@@ -295,12 +369,19 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
                 else:
                     data_dict['power_' + mode + '_mode'].append(np.nan)
 
+            if 'gamma_energy' in info:
+                data_dict['gamma_energy'].append(info['gamma_energy'])
+            else:
+                data_dict['gamma_energy'].append(np.nan)
+
         else:
             for key in ['freq_slope', 'err_slope']:
                 data_dict[key].append(np.nan)
             for mode in ['x', 'y', 'z', 'r', 'r-unwrap', 'm']:
                 data_dict['freq_' + mode + '_mode'].append(np.nan)
                 data_dict['power_' + mode + '_mode'].append(np.nan)
+            data_dict['gamma_energy'].append(np.nan)
+
 
         data_dict['filename'].append(filename)
         data_dict['id'].append(int(filename.split('-')[0].split('_')[-1]))
@@ -321,3 +402,21 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
     return df
 
 
+
+
+if __name__ == '__main__':
+
+    # xml = '<a xmlns="test"><b xmlns="test"/></a>'
+    #
+    # root = etree.fromstring(xml)
+    #
+    # # x = etree.tostring(root)
+    #
+    # x = etree.tostringlist(root)
+
+
+        # print(i, elem)
+
+
+    filename = '/Users/rettentulla/PycharmProjects/track_sphere/raw_data/20180710_M110_Sample_6_Bead_1/20180710_M110_Sample_6_Bead_1_001.xml'
+    load_video_info_xml(filename)

@@ -8,7 +8,7 @@ from track_sphere.extract_data_opencv import *
 
 # select one of the cases, case specific parameters are defined below
 case = 'extract all 20180628_Sample_6_bead_1'
-case = 'extract all 20180628_Sample_6_bead_1 sideview'
+# case = 'extract all 20180628_Sample_6_bead_1 sideview'
 # case = 'create video relevitate'
 # case = 'create video oscillation rotation'
 
@@ -129,7 +129,7 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
         [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(0, 200))])
 
     # video_files = [video_files[18]]
-    video_files = video_files[71:72]
+    video_files = video_files[96:]
     # video_files = video_files[71:72]
 elif case == 'extract all 20180628_Sample_6_bead_1 sideview':
     ################################################################################
@@ -141,13 +141,18 @@ elif case == 'extract all 20180628_Sample_6_bead_1 sideview':
     output_fps = 2
     output_images = 1000
     output_images = 10000
-    output_images = 10
+    # output_images = 10
 
     # max_frame = 25000
     max_frame = None
     # max_frame = 1050
-    max_frame = 100
+    # max_frame = 100
     min_frame = 0
+
+    process_method = 'roi'
+
+    process_parameters = {'process_method': process_method}
+    process_parameters['roi'] = (20, 60, 30, 30)  # default (60, 60, 30, 30)
 
     # processed_data
     folder_out = '../processed_data/position_data'
@@ -277,5 +282,3 @@ for f in video_files:
 
     extract_position_data(file_in, file_out=file_out, min_frame=min_frame, max_frame=max_frame, verbose=False,
                           parameters=parameters)
-    # extract_position_data(file_in, file_out=file_out, min_frame=1440, max_frame=1460, verbose=False,
-    #                       parameters=parameters)
