@@ -410,7 +410,7 @@ def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bea
     return position_file_names
 
 def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width=None, interval_width_zoom=0.1, fo=None,
-                           verbose=False, n_smooth=None):
+                           verbose=False, n_smooth=None, method='fit_ellipse'):
 
     """
 
@@ -437,17 +437,27 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
     else:
         aliasing = False
 
-    if mode == 'r':
-        x = data['ellipse angle']
-    elif mode == 'm':
-        x = data['ellipse y']
-    elif mode == 'r-unwrap':
-        x = data['ellipse angle']
-        x = np.unwrap(x, get_wrap_angle(x))
-    elif mode == 'z':
-        x = data['ellipse x'] * data['ellipse y'] * np.pi
-    else:
-        x = data['ellipse ' + mode]
+
+    if method=='fit_ellipse':
+        if mode == 'r':
+            x = data['ellipse angle']
+        elif mode == 'm':
+            x = data['ellipse y']
+        elif mode == 'r-unwrap':
+            x = data['ellipse angle']
+            x = np.unwrap(x, get_wrap_angle(x))
+        elif mode == 'z':
+            x = data['ellipse x'] * data['ellipse y'] * np.pi
+        else:
+            x = data['ellipse ' + mode]
+
+    elif method.lower() == 'bright px':
+        if len(mode) == 1:
+            x = data['bright px ' + mode]
+        else:
+            # the last character should indicate the direction we use,
+            # e.g. z-x or zx to calculate the z frequency from the x direction timetrace
+            x = data['bright px ' + mode[-1]]
 
     x = x-np.mean(x)  # make zero mean
 

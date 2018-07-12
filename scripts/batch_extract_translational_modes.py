@@ -25,7 +25,9 @@ experiment = 'long term run 7c xyr alias'
 print_only_names = True
 print_only_names = False
 
+experiment = 'mc110 bright px'
 
+method='fit_ellipse'
 
 ################################################################################
 #### experiment specific settings
@@ -133,6 +135,17 @@ elif experiment == 'run 7d xyrz':
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(86, 91)))
 
 
+elif experiment == 'mc110 bright px':
+    method = 'Bright px'
+    source_folder_positions = '../processed_data/20180710_M110_Sample_6_Bead_1/position_data/'
+    image_folder = '../images/20180710_M110_Sample_6_Bead_1/modes/'
+    modes = ['x', 'y', 'z-x', 'z-y']
+    interval_width = [50, 50, 200, 200]
+    interval_width_zoom = [1, 1, 1, 1]
+    fo = [800, 800, 2100, 2100]
+
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(3, 9)))
+
 ################################################################################
 #### run the script
 ################################################################################
@@ -158,16 +171,21 @@ for i, filename in enumerate(position_file_names):
         fig, axes, freqs = get_mode_frequency_fft(data, mode, info, return_figure=True,
                                               interval_width=interval_width[i],
                                               interval_width_zoom=interval_width_zoom[i],
-                                              fo=fo[i])
+                                              fo=fo[i], method=method)
 
         # save figure
         image_filename = os.path.join(image_folder, filename.replace('.dat', '-' + mode + '-fft.png'))
         fig.savefig(image_filename)
         plt.close(fig)
 
+        if method=='fit_ellipse':
+            dataset = 'ellipse'
+        else:
+            dataset = method
+
         # update info (json) file
         for key, value in freqs.items():
             print(key, value)
-            update_info(filename, key, value, folder_positions=source_folder_positions, dataset='ellipse', verbose=True)
+            update_info(filename, key, value, folder_positions=source_folder_positions, dataset=dataset, verbose=True)
 
 

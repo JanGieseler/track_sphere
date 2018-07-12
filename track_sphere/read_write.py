@@ -6,12 +6,8 @@ import cv2 as cv
 import numpy as np
 from datetime import datetime, timedelta
 
-from io import StringIO
 from lxml import etree
 
-
-
-import xmltodict as xd
 
 def load_video_info(filename):
     """
@@ -66,7 +62,7 @@ def load_video_info_xml(filename):
 
     # these are the values we want to extract
     xml_keys = {'FrameRateDouble':'FrameRate', 'ImWidth':'Width', 'ImHeight':'Height',
-                'TotalImageCount':'FrameCount', 'Date':'Date', 'Time':'Time'}
+                'TotalImageCount':'FrameCount', 'Date':'Date', 'Time':'Time', 'biBitCount':'BitDepth'}
 
 
     found_date = False
@@ -104,6 +100,17 @@ def load_video_info_xml(filename):
     # delete date and time since it is now contained in File_Modified_Date_Local
     del return_dict['Date']
     del return_dict['Time']
+
+    # for video output set the encoding codec
+    return_dict['CodecID'] = 'MJPG'
+
+    # now convert to numbers
+    return_dict.update({key: int(return_dict[key]) for key in ['FrameCount', 'BitDepth', 'Width', 'Height']})
+    return_dict.update({key: float(return_dict[key]) for key in ['FrameRate']})
+    return_dict['filename'] = filename
+
+    return_dict['Duration'] = return_dict['FrameCount']/return_dict['FrameRate']
+
 
 
     return return_dict

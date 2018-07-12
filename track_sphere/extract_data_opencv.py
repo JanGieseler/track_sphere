@@ -11,7 +11,7 @@ from copy import deepcopy
 from track_sphere.utils import *
 import matplotlib.pyplot as plt
 
-from track_sphere.read_write import load_video_info
+from track_sphere.read_write import load_video_info, load_video_info_xml
 
 # def optical_flow_features_surf(image_old, image, features, parameters):
 #     """
@@ -187,6 +187,8 @@ def moments_roi(image, parameters, points, return_features=False, verbose=False)
     plot_additions = []  # store the information to add the roi, ellipses to the image
     w, h = parameters['winSize']
 
+    features_list = []  # store the information to add the roi, ellipses to the image
+
     for i, pt in enumerate(points):
 
         r, c = int(pt[1]) - int(0.5*h), int(pt[0]) - int(0.5*w)
@@ -201,26 +203,11 @@ def moments_roi(image, parameters, points, return_features=False, verbose=False)
         data += [cx, cy]
 
         # save values for plotting
-        if return_image:
-            pass
-            plot_additions.append([(cx, cy), (c, r)])
+        if return_features:
+            features_list += [Feature('point', (cx, cy), None)]
 
 
-    # generate image that shows the detected features
-    if return_image:
-        for i, ((cx, cy), (c, r)) in enumerate(plot_additions):
-            # initial point
-            cv.circle(image, (c+int(0.5*w), r+int(0.5*h)), 2, (0, 0, 255), -1)
-            # roi
-            cv.rectangle(image, (c, r), (c+w, r+h), (255, 0, 0), 1)
-            # center of blob (moment)
-            cv.circle(image, (int(cx), int(cy)), 1, (0, 255, 0), -1)
-    else:
-        image = None
-
-
-
-    return data, image
+    return data, features_list
 
 def fit_blobs(image, parameters, points, return_features=False, verbose=False):
     """
@@ -486,7 +473,17 @@ def check_method_parameters(parameters, info=None, verbose=False):
             if 'roi' not in parameters['pre-processing']:
                 parameters['pre-processing']['roi'] = (60, 60, 30, 30)
 
+        elif parameters['pre-processing']['process_method'] == 'bilateral':
+            if 'filter_dimension' not in parameters['pre-processing']:
+                parameters['filter_dimension'] = 5
+            if 'rescale' not in parameters['pre-processing']:
+                parameters['normalize'] = True
 
+            if 'sigmaColor' not in parameters['pre-processing']:
+                parameters['sigmaColor'] = 50
+
+            # if 'sigmaSpace' not in parameters['pre-processing']:
+            #     parameters['sigmaSpace'] = 50
 
     else:
         parameters['pre-processing']['process_method'] = None
@@ -554,6 +551,19 @@ def check_method_parameters(parameters, info=None, verbose=False):
             parameters['extraction_parameters']['maxLevel'] = 2
         if 'criteria' not in parameters['extraction_parameters']:
             parameters['extraction_parameters']['criteria'] = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
+
+    elif method == 'moments_roi':
+
+        # take the center of the image as default
+        if 'initial_points' not in parameters['extraction_parameters']:
+            parameters['extraction_parameters']['initial_points'] = [[int(0.5 * info['Width']), int(0.5 * info['Height'])]]
+        if 'winSize' not in parameters:
+            parameters['extraction_parameters']['winSize'] = (20, 20)
+        if 'num_features' not in parameters:
+            parameters['extraction_parameters']['num_features'] = len(parameters['extraction_parameters']['initial_points'])
+
+        assert len(np.shape(parameters['extraction_parameters']['initial_points'])) == 2
+        assert len(parameters['extraction_parameters']['initial_points'][0]) == 2
     else:
         print('unknown method. Abort', method)
         return None
@@ -590,6 +600,9 @@ def get_data_header(method_parameters, verbose=False):
     elif method == 'Bright px':
         # the names of the data we will extract
         data_header = ['bright px x', 'bright px y']
+    elif method == 'moments_roi':
+        # the names of the data we will extract
+        data_header = ['x', 'y']
     elif method == 'optical_flow':
         data_header = sum([['k{:d} x'.format(i),
                             'k{:d} y'.format(i),
@@ -618,7 +631,10 @@ def get_frame_data(frame, parameters, return_features=False, method_objects=None
     if verbose:
         print('method - get_frame_data', method)
     if method == 'Bright px':
-        (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame[:, :, 0], None)
+        if len(np.shape(frame))==3:
+            (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame[:, :, 0], None)
+        else:
+            (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame[:, :], None)
         frame_data = [maxLoc[1], maxLoc[0]]
         features = [Feature('point', (maxLoc[0], maxLoc[1]), None)]
 
@@ -632,6 +648,9 @@ def get_frame_data(frame, parameters, return_features=False, method_objects=None
         points = method_objects['points']
         frame_data, features = fit_blobs(frame, parameters=parameters, points=points,
                                          return_features=return_features, verbose=verbose)
+    elif method == 'moments_roi':
+        points = method_objects['points']
+        frame_data, features = moments_roi(frame, parameters=parameters, points=points, return_features=return_features, verbose=verbose)
 
     return frame_data, features
 
@@ -754,6 +773,25 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
         frame_out = np.zeros(frame.shape, np.uint8)
         frame_out[roi[0]:roi[0]+roi[2], roi[1]:roi[1]+roi[3]] = frame[roi[0]:roi[0]+roi[2], roi[1]:roi[1]+roi[3]]
 
+    elif parameters['process_method'] == 'bilateral':
+        filter_dimension = parameters['filter_dimension']
+        sigmaColor = parameters['sigmaColor']
+
+        # ksize = parameters['ksize']
+        ksize = 3
+
+        frame_out = cv.medianBlur(frame, ksize=ksize)
+
+        if parameters['normalize']:
+            # dst = np.zeros(shape=np.shape(frame_out))
+            frame_out = cv.normalize(frame_out, None, 0, 255, norm_type=cv.NORM_MINMAX)
+
+        frame_out = cv.bilateralFilter(frame_out, d=filter_dimension, borderType=cv.BORDER_ISOLATED, sigmaColor=sigmaColor, sigmaSpace=0)
+
+
+
+            # frame_out = dst
+
     elif parameters['process_method'] == None:
         frame_out = frame
     else:
@@ -805,7 +843,7 @@ def get_method_objects(parameters):
         method_objects.update({'mask': mask, 'bgdModel': bgdModel, 'fgdModel': fgdModel})
 
     ### objects for the interations
-    if method == 'fit_blobs':
+    if method in ['fit_blobs', 'moments_roi']:
         points = method_parameters['initial_points']
         method_objects['points'] = points
 
@@ -929,6 +967,20 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
         file_in_info = file_in
 
 
+
+    # check what kind of info file we have json (ueye Camera) or xml (Phantom camera)
+    if len(file_in_info.split('.avi')) == 2:
+        file_in_info = file_in_info.replace('.avi', '.json')
+
+        # if the info file is not a json file it is an xml file
+        if not os.path.exists(file_in_info):
+            file_in_info = file_in_info.replace('.json', '.xml')
+
+    # check if it really exists
+    assert os.path.exists(file_in_info)
+
+
+
     ################################################################################
     #### checks the validity of the inputs and checks for existing files
     ################################################################################
@@ -970,8 +1022,13 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             os.makedirs(img_dir)
 
     #get the metadata from the input file
-    info = load_video_info(file_in_info)
 
+    if len(file_in_info.split('.json')) == 2:
+        info = load_video_info(file_in_info)
+    elif len(file_in_info.split('.xml')) == 2:
+        info = load_video_info_xml(file_in_info)
+    else:
+        raise ValueError('unknown info file format')
 
     if verbose:
         print('video info:')
