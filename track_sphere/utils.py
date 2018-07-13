@@ -10,7 +10,6 @@ import operator
 from functools import reduce
 from scipy import optimize
 
-
 def roi_2_roi_tlc(roi):
     """
 

@@ -62,7 +62,7 @@ def load_video_info_xml(filename):
 
     # these are the values we want to extract
     xml_keys = {'FrameRateDouble':'FrameRate', 'ImWidth':'Width', 'ImHeight':'Height',
-                'TotalImageCount':'FrameCount', 'Date':'Date', 'Time':'Time', 'biBitCount':'BitDepth'}
+                'ImageCount':'FrameCount', 'Date':'Date', 'Time':'Time', 'biBitCount':'BitDepth'}
 
 
     found_date = False
@@ -332,9 +332,8 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
     # create empty dictionary
     data_dict = {'timestamp': [], 'freq_slope': [], 'err_slope': [], 'filename': [], 'id': [],
                  'FrameCount':[], 'FrameRate':[], 'gamma_energy':[]}
-    for mode in ['x', 'y', 'z', 'r', 'r-unwrap', 'm']:
-        data_dict['freq_' + mode + '_mode'] = []
-        data_dict['power_' + mode + '_mode'] = []
+
+
     if experiment_begin is not None:
         assert isinstance(experiment_begin, str)
         data_dict['time (s)'] = []
@@ -355,6 +354,18 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
         else:
             data_dict['timestamp'].append(np.nan)
 
+
+        if i==0:
+
+            if 'Bright px' in info_in:
+                modes = ['x', 'y', 'z', 'z-x', 'z-y']
+            elif 'ellipse' in info_in:
+                modes = ['x', 'y', 'z', 'r', 'r-unwrap', 'm']
+
+            for mode in modes:
+                data_dict['freq_' + mode + '_mode'] = []
+                data_dict['power_' + mode + '_mode'] = []
+
         # move to next dataset if ellipse data has not been created
         if 'ellipse' in info_in:
             info = info_in['ellipse']
@@ -366,7 +377,24 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
                 data_dict['freq_slope'].append(np.nan)
                 data_dict['err_slope'].append(np.nan)
 
-            for mode in ['x', 'y', 'z', 'r', 'r-unwrap', 'm']:
+            for mode in modes:
+                if mode in info:
+                    data_dict['freq_' + mode + '_mode'].append(info[mode])
+                else:
+                    data_dict['freq_' + mode + '_mode'].append(np.nan)
+                if mode+'_power' in info:
+                    data_dict['power_' + mode + '_mode'].append(info[mode+'_power'])
+                else:
+                    data_dict['power_' + mode + '_mode'].append(np.nan)
+
+            if 'gamma_energy' in info:
+                data_dict['gamma_energy'].append(info['gamma_energy'])
+            else:
+                data_dict['gamma_energy'].append(np.nan)
+
+        elif 'Bright px' in info_in:
+            info = info_in['Bright px']
+            for mode in modes:
                 if mode in info:
                     data_dict['freq_' + mode + '_mode'].append(info[mode])
                 else:
@@ -384,7 +412,7 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
         else:
             for key in ['freq_slope', 'err_slope']:
                 data_dict[key].append(np.nan)
-            for mode in ['x', 'y', 'z', 'r', 'r-unwrap', 'm']:
+            for mode in modes:
                 data_dict['freq_' + mode + '_mode'].append(np.nan)
                 data_dict['power_' + mode + '_mode'].append(np.nan)
             data_dict['gamma_energy'].append(np.nan)
@@ -398,10 +426,13 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
         for key in ['FrameCount', 'FrameRate']:
 
             data_dict[key].append(info[key])
-
+    # print('=====================')
+    data_dict = dict((k, v) for k, v in data_dict.items() if v)
     if verbose:
+        print('showing dict contents')
         for k, v in data_dict.items():
             print(k, len(v))
+
 
     df = pd.DataFrame.from_dict(data_dict)
     df = df.set_index('id')

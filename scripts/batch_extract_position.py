@@ -357,7 +357,7 @@ elif case == 'extract sideview spot 20180710_M110_Sample_6_Bead_1':
 
     video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
     video_files = sorted(
-        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(6, 200))])
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(22, 200))])
 
     # video_files = video_files[96:]
 elif case == 'test':

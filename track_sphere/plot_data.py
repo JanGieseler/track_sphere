@@ -5,7 +5,8 @@ from matplotlib.patches import Rectangle, Circle
 import numpy as np
 from track_sphere.read_write import grab_frame
 
-from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle, get_rotation_frequency, fit_exp_decay, exp_offset
+from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle, get_rotation_frequency, fit_exp_decay
+from track_sphere.utils import exp_offset, power_to_energy_K
 from track_sphere.read_write import load_time_trace
 from track_sphere.plot_utils import annotate_frequencies
 
@@ -677,7 +678,8 @@ def plot_rot_angle_dist(data, info, frame_max=100, n_avrg_list = [1,2, 4, 8, 16,
     return fig, axes
 
 
-def waterfall(position_file_names,source_folder_positions=None, modes='xy', navrg=10, off_set_factor=-3, xlim=None, tag='_Sample_6_Bead_1_', nmax=None, verbose=False):
+def waterfall(position_file_names,source_folder_positions=None, modes='xy', navrg=10, off_set_factor=-3, xlim=None, tag='_Sample_6_Bead_1_', nmax=None,
+              method = 'fit_ellipse', verbose=False):
     """
 
     calculated the psds and plots them as a waterfall plot
@@ -706,12 +708,16 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
         # calculate the psd
         psd_data = {}
         for mode in modes:
-            if mode == 'r':
-                x = data['ellipse angle']
-            elif mode == 'z':
-                x = data['ellipse a'] * data['ellipse b']
-            else:
-                x = data['ellipse ' + mode]
+            if method == 'fit_ellipse':
+                if mode == 'r':
+                    x = data['ellipse angle']
+                elif mode == 'z':
+                    x = data['ellipse a'] * data['ellipse b']
+                else:
+                    x = data['ellipse ' + mode]
+            elif method.lower() == 'bright px':
+                x = data['bright px ' + mode]
+
             x -= np.mean(x)
             if nmax is not None:
                 x = x[0:nmax]
@@ -739,6 +745,46 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
     return fig
 
 
+def plot_get_ring_down_time(x, time_step,frequency_range, window_length,
+                 t_min=0, t_max=None, fo=None,  calib=1, magnet_diameter=1, density=7600,
+                 mode='', return_fig=False):
+
+
+    # if fo is not provided set it to the center of the range
+    if fo is None:
+        fo = np.mean(frequency_range)
+    if t_max is None:
+        t_max = len(x)*time_step
+
+    fig, ax, (t, x_energy, f) = plot_timetrace_energy(x=x, time_step=time_step, window_length=window_length,
+                                                      frequency_range=frequency_range, return_data=True)
+    plt.close(fig)
+
+    x_energy = power_to_energy_K(x_energy, radius=magnet_diameter / 2, frequency=fo, calibration_factor=calib,
+                                 density=density)
+    fig1, ax, fit = plot_fit_exp_decay(t, x_energy, t_min=t_min, t_max=t_max, return_data=True)
+
+
+    # image_filename = os.path.join(image_folder, filename.replace('-fit_ellipse.dat', '-ring-down.jpg'))
+    # image_filename = os.path.join(image_folder, filename.replace('-fit_ellipse.dat', '-spectogram.jpg'))
+
+
+    if return_fig:
+
+        ax.set_ylabel('energy (Kelvin)')
+
+        ax.set_title('Q = {:0.0f}, f_{:s} = {:0.0f} Hz'.format(2 * np.pi * fo * fit[0][1], mode, fo))
+
+        fig2, ax, psd_data = plot_psd_vs_time(x=x, time_step=time_step, frequency_range=frequency_range,
+                                              window_length=window_length,
+                                              full_spectrum=False, return_data=True)
+
+
+        return fit[0], (fig1, fig2)
+    else:
+        plt.close(fig1)
+
+        return fit[0]
 
 
 
