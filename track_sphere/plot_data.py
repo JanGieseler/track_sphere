@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from scipy.ndimage.filters import gaussian_filter
 from matplotlib.patches import Rectangle, Circle
-
+import os
 import numpy as np
 from track_sphere.read_write import grab_frame
 
@@ -678,7 +678,8 @@ def plot_rot_angle_dist(data, info, frame_max=100, n_avrg_list = [1,2, 4, 8, 16,
     return fig, axes
 
 
-def waterfall(position_file_names,source_folder_positions=None, modes='xy', navrg=10, off_set_factor=-3, xlim=None, tag='_Sample_6_Bead_1_', nmax=None,
+def waterfall(position_file_names,source_folder_positions=None, modes='xy', navrg=10, off_set_factor=-3,
+              frequency_range=None, tag='_Sample_6_Bead_1_', nmax=None,
               method = 'fit_ellipse', verbose=False):
     """
 
@@ -698,6 +699,10 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
 
     """
     fig, ax = plt.subplots(len(modes), 1, sharex=True, figsize=(18, 5 * len(modes)))
+
+    if len(modes)==1:
+        ax = [ax]
+
 
     for i, filename in enumerate(position_file_names):
         run = int(filename.split(tag)[1].split('-')[0])
@@ -721,7 +726,7 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
             x -= np.mean(x)
             if nmax is not None:
                 x = x[0:nmax]
-            f, p = power_spectral_density(x, time_step=dt)
+            f, p = power_spectral_density(x, time_step=dt, frequency_range=frequency_range)
             psd_data[mode] = p
         psd_data['f'] = f
 
@@ -734,9 +739,9 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
             d = avrg(d[1:] * 10 ** (off_set_factor * i), navrg)  # shift on a log scale to get the waterfall effect
             ax[a].semilogy(f, d, label=str(run), alpha=0.5)  # plot
 
-    if xlim is not None:
-        assert len(xlim) == 2
-        ax[0].set_xlim(xlim)
+    # if xlim is not None:
+    #     assert len(xlim) == 2
+    #     ax[0].set_xlim(xlim)
     for a, mode in enumerate(modes):
         ax[a].set_title(mode + ' data')
     ax[a].set_xlabel('frequency (Hz)')
@@ -785,6 +790,47 @@ def plot_get_ring_down_time(x, time_step,frequency_range, window_length,
         plt.close(fig1)
 
         return fit[0]
+
+def plot_frequencies_zoom(psd_data, peak_data, image_folder, nbin, df_zoom):
+    """
+
+    Args:
+        psd_data:
+        peak_data:
+        image_folder:
+        nbin:
+        df_zoom:
+
+    Returns:
+
+    """
+
+    for i in range(len(peak_data)):
+        fig = plt.figure()
+        mode = peak_data.iloc[i]['mode'][0]
+        fo = peak_data.iloc[i]['peak freq']
+
+        f = avrg(psd_data['f'][1:], nbin)
+        x = avrg(psd_data[mode][1:], nbin)
+
+        # rough selection
+        # fmin, fmax = fo - 3 * df_zoom / 2, 3 * fo + df_zoom / 2
+        # xs = x[np.all([f > fmin, f < fmax], axis=0)]
+        # fs = f[np.all([f > fmin, f < fmax], axis=0)]
+        #
+        # fo = fs[np.argmax(xs)]
+
+        fmin, fmax = fo - df_zoom / 2, fo + df_zoom / 2
+        x = x[np.all([f > fmin, f < fmax], axis=0)]
+        fs = f[np.all([f > fmin, f < fmax], axis=0)]
+
+        plt.plot(fs, x, '-o')
+        plt.xlabel('frequency (Hz)')
+        plt.title('mode ' + str(peak_data.index[i]))
+
+        filename = '{:02d}_{:s}_{:04.0f}Hz.png'.format(i, mode, fo)
+        fig.savefig(os.path.join(image_folder, filename))
+        plt.close(fig)
 
 
 

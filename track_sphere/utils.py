@@ -9,6 +9,8 @@ from glob import glob
 import operator
 from functools import reduce
 from scipy import optimize
+from scipy.signal import find_peaks
+
 
 def roi_2_roi_tlc(roi):
     """
@@ -688,6 +690,78 @@ def exp_offset(t, *params):
 #
 #     return range_pairs
 #
+
+
+def find_peaks_in_psd(psd_data, fmin=0, fmax=None, nbin=1, max_number_of_peaks=10, height_threshold_factor=3,
+                      distance=5):
+
+    """
+
+
+    Args:
+        psd_data:
+        fmin:
+        fmax:
+        nbin:
+        max_number_of_peaks:
+        height_threshold_factor:
+        distance:
+        image_folder:
+
+    Returns:
+
+    """
+
+    print('NOTE: max_number_of_peaks not being used yet')
+
+    f = avrg(psd_data['f'][1:], nbin)
+
+    if fmax is None:
+        fmax = max(f)
+
+    data_dict = {}
+    for i, mode in enumerate(['x', 'y']):
+        x = avrg(psd_data[mode][1:], nbin)
+
+        x = x[np.all([f > fmin, f < fmax], axis=0)]
+        fs = f[np.all([f > fmin, f < fmax], axis=0)]
+
+        height = height_threshold_factor * np.mean(x)
+        peaks = find_peaks(x, height=height, distance=distance)[0]
+
+        if i == 0:
+            data_dict['peak freq'] = list(fs[peaks])
+            data_dict['peak height'] = list(x[peaks])
+            data_dict['mode'] = [mode for i in range(len(peaks))]
+
+        else:
+            data_dict['peak freq'] += list(fs[peaks])
+            data_dict['peak height'] += list(x[peaks])
+            data_dict['mode'] += [mode for i in range(len(peaks))]
+
+    df = pd.DataFrame.from_dict(data=data_dict)
+    df = df.sort_values('peak freq', ascending=False)
+    drop_list = []
+    for i in range(len(df) - 1):
+        f1, f2 = df.iloc[i]['peak freq'], df.iloc[i + 1]['peak freq']
+        a1, a2 = df.iloc[i]['peak height'], df.iloc[i + 1]['peak height']
+        if np.isclose(f1, f2):
+            # update mode with the information that the mode shows in both modes, with the stronger mode first
+            # and drop the second (weaker) mode
+            if a1 > a2:
+                df.at[i, 'mode'] = df.iloc[i]['mode'] + '/' + df.iloc[i + 1]['mode']
+                drop_list += [df.index[i + 1]]
+            else:
+                df.at[i, 'mode'] = df.iloc[i + 1]['mode'] + '/' + df.iloc[i]['mode']
+                drop_list += [df.index[i]]
+
+    df = df.drop(drop_list)
+    df = df.sort_values('peak height', ascending=False)
+
+
+    return df
+
+
 
 if __name__ == '__main__':
     folder_in = '../example_data/'

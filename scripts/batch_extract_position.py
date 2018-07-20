@@ -16,6 +16,8 @@ case = 'extract sideview spot 20180710_M110_Sample_6_Bead_1'
 # case = 'test'
 
 # case = 'extract sideview spot 20180710_M110_Sample_6_Bead_1'
+case = 'extract top view full 20180718_M110_Sample_6_Bead_1'
+case = 'extract sideview spot 20180718_M110_Sample_6_Bead_1'
 process_parameters = {}
 
 ################################################################################
@@ -358,6 +360,113 @@ elif case == 'extract sideview spot 20180710_M110_Sample_6_Bead_1':
     video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
     video_files = sorted(
         [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(22, 200))])
+
+    # video_files = video_files[96:]
+elif case == 'extract top view full 20180718_M110_Sample_6_Bead_1':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'fit_ellipse'
+
+    export_video = False
+    output_fps = 2
+    output_images = 1000
+    output_images = 1000
+    # output_images = 1
+
+    # max_frame = 25000
+    max_frame = None
+    # max_frame = 1050
+    # min_frame = 1000
+    min_frame = 0
+
+    process_method = 'morph'
+
+    # processed_data
+    folder_out = '../processed_data/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    process_parameters = {'process_method': process_method}
+    process_parameters['k_size_close'] = 13  # 11 default
+    process_parameters['k_size_noise'] = 3  # 3 default
+    process_parameters['c'] = 11  # 11 default
+    process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
+    process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    process_parameters['blockSize'] = 91  # 35 default
+
+    # process_parameters['threshold_type'] = 'gauss'  # default is mean maxval
+    process_parameters['maxval'] = 255  # default is 255
+
+    ################################################################################
+    #### preprocessing morph parameters
+    ################################################################################
+
+    extraction_parameters['convex_hull'] = True
+
+    #source folder
+    folder_in = '../raw_data/20180718_M110_Sample_6_Bead_1/'
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(10, 100))])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract sideview spot 20180718_M110_Sample_6_Bead_1':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+
+
+    # output_images = 1
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    # max_frame = 20
+    # max_frame = 1050
+    max_frame =None
+    # max_frame = 100
+    min_frame = 0
+
+    #option 1 select roi
+    # process_method = 'roi'
+    # process_parameters = {'process_method': process_method}
+    # process_parameters['roi'] = (0, 0, 64, 64)  # default (60, 60, 30, 30)
+
+    # option 2 select roi
+    process_method = 'bilateral'
+    process_parameters = {'process_method': process_method}
+    process_parameters['filter_dimension'] = 9  # default 5
+    process_parameters['sigmaColor'] = 120  # default 50
+    process_parameters['sigmaSpace'] = 120  # default 50
+    process_parameters['normalize'] = True  # default True
+
+
+
+
+
+    # processed_data
+    folder_out = '../processed_data/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+    extraction_parameters = {'method': method}
+
+    #source folder
+    folder_in = '../raw_data/20180718_M110_Sample_6_Bead_1/'
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in list(range(12, 200))])
 
     # video_files = video_files[96:]
 elif case == 'test':

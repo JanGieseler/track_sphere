@@ -28,6 +28,8 @@ print_only_names = False
 
 experiment = 'mc110 bright px'
 
+experiment = '20180718 mc110'
+
 method='fit_ellipse'
 
 ################################################################################
@@ -159,7 +161,7 @@ elif experiment == 'mc110 bright px':
     fo = [840, 815, 2100, 2100]
     # fo = [815, 840, 2100, 2100]
 
-    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(19, 23)))
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(22, 23)))
     # position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(3, 4)))
 
 ################################################################################
