@@ -623,13 +623,12 @@ elif case == 'extract top bright spot ueye 20180724_M110_Sample_6_Bead_1':
     #source folder
     folder_in = '../raw_data/20180724_Sample_6_Bead_1/'
     runs = list(range(8,9))
-    run = 23 # 21, 25, 26, 27, 28, 29
+    run = 29 #  29, 30
     runs = list(range(run, run+2))
 
     print(glob(os.path.join(folder_in, '*.avi')))
     video_files = sorted(glob(os.path.join(folder_in, '*Sample_6_Bead_1_*.avi')))
 
-    print(len(video_files), video_files)
 
     video_files = sorted(
         [f for f in video_files if int(f.split('.avi')[0].split('_')[-1]) in runs])

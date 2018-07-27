@@ -7,7 +7,7 @@ import os
 
 experiment = 'levitation 8 bright px'
 # experiment = 'levitation 8 fit ellipse'
-
+experiment = 'levitation 7 bright px steady state'
 
 if experiment == 'levitation 8 bright px':
     source_folder_positions = '../processed_data/20180718_M110_Sample_6_Bead_1/position_data/'
@@ -52,7 +52,7 @@ elif experiment == 'levitation 7 bright px steady state':
 
     fmin = 0
     fmax = None
-    nbin = 100  ## for peak finding
+    nbin = 10  ## for peak finding
     nbin_zoom = 1  ## for peak plotting (zoom)
     max_number_of_peaks = 10
     height_threshold_factor = 3
@@ -62,7 +62,7 @@ elif experiment == 'levitation 7 bright px steady state':
 
     run = 12  # runs 4,5,6,7,8, 13
     runs = list(range(run, run+1))
-    runs = [11,12]
+    runs = [17]+list(range(28,32))
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=runs)
 modes = 'xy'
 psd_data = {m:None for m in modes}

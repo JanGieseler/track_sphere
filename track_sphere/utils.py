@@ -450,8 +450,12 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
         elif mode == 'z':
             x = data['ellipse x'] * data['ellipse y'] * np.pi
         else:
-            x = data['ellipse ' + mode]
-
+            if len(mode) == 1:
+                x = data['ellipse ' + mode]
+            else:
+                # the last character should indicate the direction we use,
+                # e.g. z-x or zx to calculate the z frequency from the x direction timetrace
+                x = data['ellipse ' + mode[-1]]
     elif method.lower() == 'bright px':
         if len(mode) == 1:
             x = data['bright px ' + mode]
@@ -462,8 +466,8 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
 
     x = x-np.mean(x)  # make zero mean
 
-    f, p = power_spectral_density(x, time_step, frequency_range=None)
 
+    f, p = power_spectral_density(x, time_step, frequency_range=None)
 
     if aliasing:
         fo = info['info']['FrameRate']-fo
@@ -501,7 +505,6 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
 
     freqs[mode + '_power'] = np.sum(P_zoom) * df
 
-
     if verbose:
         print(mode + ': ', freqs[mode])
 
@@ -536,7 +539,7 @@ def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width
         return freqs
 
 
-def power_to_energy_K(x, radius, frequency, calibration_factor, density=7600):
+def power_to_energy_K(x, radius, calibration_factor, frequency=1, velocity_mode=True, density=7600):
     """
 
     scaled the input power to physical units
@@ -547,13 +550,17 @@ def power_to_energy_K(x, radius, frequency, calibration_factor, density=7600):
         frequency: in Hertz
         calibration_factor: in um/px
         density: in kg/m^3
+        velocity_mode: if true x was computed from the velocity psd if false x is the integral of the position psd
 
     Returns:
 
     """
     mass = density*4*np.pi/3 * radius**3*1e-18
     kB = 1.38e-23
-    return x*calibration_factor**2*1e-12*mass*(2*np.pi*frequency)**2/kB
+    if velocity_mode:
+        return x*calibration_factor**2*1e-12*mass/kB
+    else:
+        return x * calibration_factor ** 2 * 1e-12 * mass * (2 * np.pi * frequency) ** 2 / kB
 
 def get_ampfreqphase_FFT(qx, dt, n0 = 0, f_range = None, return_Spectra = False):
     '''

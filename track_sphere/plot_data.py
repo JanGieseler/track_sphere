@@ -3,6 +3,8 @@ from scipy.ndimage.filters import gaussian_filter
 from matplotlib.patches import Rectangle, Circle
 import os
 import numpy as np
+from datetime import datetime, timedelta
+
 from track_sphere.read_write import grab_frame
 
 from track_sphere.utils import power_spectral_density, avrg, get_wrap_angle, get_rotation_frequency, fit_exp_decay
@@ -340,7 +342,12 @@ def plot_psd_vs_time(x, time_step, start_frame=0, window_length=1000, end_frame=
     # substract mean to get rid of large 0-frequency peak
     x = x-np.mean(x)
     # reshape the timetrace such that each row is a window
-    X = x[start_frame:start_frame+window_length*N_windows].values.reshape(N_windows, window_length)
+    if isinstance(x, np.ndarray):
+        # numpy
+        X = x[start_frame:start_frame+window_length*N_windows].reshape(N_windows, window_length)
+    else:
+        # pandas
+        X = x[start_frame:start_frame + window_length * N_windows].values.reshape(N_windows, window_length)
     P = []
     # c = 0
     for x in X:
@@ -515,7 +522,7 @@ def plot_psds(x, time_step, window_ids = None, start_frame = 0, window_length= 1
     else:
         return fig, ax
 
-def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_frame=None, frequency_range= None, ax = None, verbose = False, return_data=False):
+def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_frame=None, frequency_range= None, ax = None, verbose = True, velocity_mode=True, return_data=False):
     """
 
     Args:
@@ -527,6 +534,7 @@ def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_fra
         frequency_range:
         ax:
         verbose:
+        velocity_mode: if true return the energy calculated from the velocity psd (units are px^2 Hz^2) if false calculate from position psd (units are px^2)
         return_data:
 
     Returns:
@@ -563,7 +571,13 @@ def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_fra
     df = np.mean(np.diff(f))
 
     # now calculate the energy (P is in units of px^2/Hz or m^2/Hz)
-    x = np.sum(P, axis=1)*df
+    if velocity_mode:
+        # integrate over velocity psd which is Svv(omega)=Sxx(omega)*omega^2, where Sxx(omega) is the position psd
+        # and Svv(omega) the velocity psd
+        x = np.sum(P*(2*np.pi*f)**2, axis=1)*df
+    else:
+        # integrate over position psd Sxx(omega)
+        x = np.sum(P, axis=1)*df
 
     time = np.arange(len(x)) * time_step * window_length
     ax.plot(time, x)
@@ -750,10 +764,117 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
     return fig
 
 
-def plot_get_ring_down_time(x, time_step,frequency_range, window_length,
+def spectra_2D_map(position_file_names,source_folder_positions=None, modes='xy', navrg=10,
+                   frequency_range=None, tag='_Sample_6_Bead_1_', nmax=None,
+                   y_axis = '',
+                   method = 'fit_ellipse', verbose=False):
+    """
+
+    calculated the psds and plots them as a waterfall plot
+
+    Args:
+        position_file_names:
+        modes:
+        navrg:
+        y_axis: determines what to use for the y-axis, ['run', 'time (h)', ''] if '' y is equilly spaced
+        xlim:
+        tag:
+        nmax:
+        verbose:
+
+    Returns:
+
+    """
+    fig, ax = plt.subplots(len(modes), 1, sharex=True, figsize=(18, 5 * len(modes)))
+
+    if len(modes)==1:
+        ax = [ax]
+
+    psd_data = {'y_axis':[]}
+    for i, filename in enumerate(position_file_names):
+        run = int(filename.split(tag)[1].split('-')[0])
+        if verbose:
+            print(filename, run)
+        data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
+        dt = 1./info['info']['FrameRate']
+
+        if y_axis == '':
+            psd_data['y_axis'].append(i)
+        elif y_axis == 'run':
+            psd_data['y_axis'].append(run)
+        elif y_axis == 'time (h)':
+            time = info['info']['File_Modified_Date_Local']
+            time = datetime.strptime(time.split('.')[0], '%Y-%m-%d %H:%M:%S')
+            if i==0:
+                start = time
+            time = time-start
+            psd_data['y_axis'].append(time.seconds/(60 * 60) + time.days * 24)
+
+        # calculate the psd
+
+        for mode in modes:
+            if method == 'fit_ellipse':
+                if mode == 'r':
+                    x = data['ellipse angle']
+                elif mode == 'z':
+                    x = data['ellipse a'] * data['ellipse b']
+                else:
+                    x = data['ellipse ' + mode]
+            elif method.lower() == 'bright px':
+                x = data['bright px ' + mode]
+
+            x -= np.mean(x)
+            if nmax is not None:
+                x = x[0:nmax]
+            f, p = power_spectral_density(x, time_step=dt, frequency_range=frequency_range)
+            p = avrg(p, navrg)
+            if mode in psd_data:
+                psd_data[mode] = np.vstack([psd_data[mode], p])
+            else:
+                psd_data[mode] = p
+
+
+    psd_data['f'] = avrg(f, navrg)
+
+
+    for a, mode in enumerate(modes):
+        z = np.log10(psd_data[mode])  # get data
+        y = psd_data['y_axis']
+        x = psd_data['f']
+
+        ax[a].pcolormesh(x, y, z)  # plot
+
+        ax[a].set_title(mode + ' data')
+        ax[a].set_xlabel('frequency (Hz)')
+        ax[a].set_ylabel(y_axis)
+
+    return fig
+
+def plot_get_ring_down_time(x, time_step,frequency_range, window_length, velocity_mode=True,
                  t_min=0, t_max=None, fo=None,  calib=1, magnet_diameter=1, density=7600,
                  mode='', return_fig=False):
+    """
 
+    Args:
+        x:
+        time_step:
+        frequency_range:
+        window_length:
+        velocity_mode:
+        t_min:
+        t_max:
+        fo:
+        calib:
+        magnet_diameter:
+        density:
+        mode:
+        return_fig:
+
+    Returns:
+
+    """
+
+    print('velo', velocity_mode)
 
     # if fo is not provided set it to the center of the range
     if fo is None:
@@ -762,30 +883,37 @@ def plot_get_ring_down_time(x, time_step,frequency_range, window_length,
         t_max = len(x)*time_step
 
     fig, ax, (t, x_energy, f) = plot_timetrace_energy(x=x, time_step=time_step, window_length=window_length,
-                                                      frequency_range=frequency_range, return_data=True)
+                                                      frequency_range=frequency_range, return_data=True,
+                                                      velocity_mode=velocity_mode)
     plt.close(fig)
 
     x_energy = power_to_energy_K(x_energy, radius=magnet_diameter / 2, frequency=fo, calibration_factor=calib,
-                                 density=density)
+                                 density=density, velocity_mode=velocity_mode)
     fig1, ax, fit = plot_fit_exp_decay(t, x_energy, t_min=t_min, t_max=t_max, return_data=True)
 
 
-    # image_filename = os.path.join(image_folder, filename.replace('-fit_ellipse.dat', '-ring-down.jpg'))
-    # image_filename = os.path.join(image_folder, filename.replace('-fit_ellipse.dat', '-spectogram.jpg'))
+
+    fig2, ax1, psd_data = plot_psd_vs_time(x=x, time_step=time_step, frequency_range=frequency_range,
+                                          window_length=window_length,
+                                          full_spectrum=False, return_data=True)
+
+
+    i_max = np.argmax(np.mean(psd_data['spectra'], axis=0))
+
+    fmax = psd_data['frequencies'][i_max]
+
+    ax.set_ylabel('energy (Kelvin)')
+
+    ax.set_title('Q = {:0.0f}, f_{:s} = {:0.0f} Hz'.format(2 * np.pi * fo * fit[0][1], mode, fmax))
+
 
 
     if return_fig:
 
-        ax.set_ylabel('energy (Kelvin)')
-
-        ax.set_title('Q = {:0.0f}, f_{:s} = {:0.0f} Hz'.format(2 * np.pi * fo * fit[0][1], mode, fo))
-
-        fig2, ax, psd_data = plot_psd_vs_time(x=x, time_step=time_step, frequency_range=frequency_range,
-                                              window_length=window_length,
-                                              full_spectrum=False, return_data=True)
 
 
-        return fit[0], (fig1, fig2)
+
+        return (fit[0], fmax), (fig1, fig2)
     else:
         plt.close(fig1)
 
@@ -826,7 +954,8 @@ def plot_frequencies_zoom(psd_data, peak_data, image_folder, nbin, df_zoom):
 
         plt.plot(fs, x, '-o')
         plt.xlabel('frequency (Hz)')
-        plt.title('mode ' + str(peak_data.index[i]))
+        print(fo,' {:04.3f}Hz'.format(fo), ' {:04.03f}Hz'.format(fo))
+        plt.title('mode ' + str(peak_data.index[i]) + ' {:04.3f}Hz'.format(fo))
 
         filename = '{:02d}_{:s}_{:04.0f}Hz.png'.format(i, mode, fo)
         fig.savefig(os.path.join(image_folder, filename))

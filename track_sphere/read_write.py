@@ -62,8 +62,10 @@ def load_video_info_xml(filename):
 
     # these are the values we want to extract
     xml_keys = {'FrameRateDouble':'FrameRate', 'ImWidth':'Width', 'ImHeight':'Height',
-                'ImageCount':'FrameCount', 'Date':'Date', 'Time':'Time', 'biBitCount':'BitDepth'}
-
+                'TotalImageCount':'FrameCount', 'Date':'Date', 'Time':'Time', 'biBitCount':'BitDepth'}
+    # comment: TotalImageCount give the total images and ImageCount the actual number of images in the video file.
+    # However, since saving always takes forever when writing the xml file for all frame, we generate the xml file
+    # from a shorter video. It takes ages because every timestep gets written into the xml file which can be a lot for long videos.
 
     found_date = False
     found_time = False
@@ -426,10 +428,14 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
         for key in ['FrameCount', 'FrameRate']:
 
             data_dict[key].append(info[key])
+
+    if verbose:
+        if data_dict.keys() == []:
+            print('file empty: ', filename)
     # print('=====================')
     data_dict = dict((k, v) for k, v in data_dict.items() if v)
     if verbose:
-        print('showing dict contents')
+        print('showing dict contents ', filename)
         for k, v in data_dict.items():
             print(k, len(v))
 
