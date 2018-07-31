@@ -468,6 +468,9 @@ def check_method_parameters(parameters, info=None, verbose=False):
                 parameters['pre-processing']['k_size_close'] = 11
             if 'threshold_type' not in parameters['pre-processing']:
                 parameters['pre-processing']['threshold_type'] = 'mean'
+            if 'normalize' not in parameters['pre-processing']:
+                parameters['pre-processing']['normalize'] = True
+
 
         elif parameters['pre-processing']['process_method'] == 'roi':
             if 'roi' not in parameters['pre-processing']:
@@ -745,6 +748,12 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
         k_size_noise = parameters['k_size_noise']
         k_size_close = parameters['k_size_close']
         threshold_type = parameters['threshold_type']
+
+
+        if parameters['normalize']:
+            # dst = np.zeros(shape=np.shape(frame_out))
+            gray = cv.normalize(gray, None, 0, 255, norm_type=cv.NORM_MINMAX)
+
         if threshold_type == 'gauss':
             frame_out = cv.adaptiveThreshold(gray, maxval, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, blockSize, c)
         elif threshold_type == 'mean':

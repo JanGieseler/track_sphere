@@ -31,6 +31,7 @@ experiment = '20180710 mc110 bright px'
 experiment = '20180718 mc110 bright px'
 experiment = '20180724 lev 9'
 
+
 method='fit_ellipse'
 n_smooth = None
 
@@ -152,7 +153,6 @@ elif experiment == 'run 7d xyrz':
 
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(86, 91)))
 
-
 elif experiment == '20180710 mc110 bright px':
     method = 'Bright px'
     source_folder_positions = '../processed_data/20180710_M110_Sample_6_Bead_1/position_data/'
@@ -163,8 +163,9 @@ elif experiment == '20180710 mc110 bright px':
     interval_width_zoom = [1, 1, 1, 1]
     fo = [840, 815, 2100, 2100]
     # fo = [815, 840, 2100, 2100]
-
-    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(22, 23)))
+    run=18
+    runs = [run]
+    position_file_names = get_position_file_names(source_folder_positions, method=method, runs=runs)
     # position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(3, 4)))
 elif experiment == '20180718 mc110 bright px':
     method = 'Bright px'
@@ -185,7 +186,7 @@ elif experiment == '20180718 mc110 bright px':
     # runs = [23, 29]
     # runs = [23, 29]
     # runs = list(range(23, 31))
-    run=21
+    run=35
     runs = list(range(run, run+1))
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=runs)
     # position_file_names = get_position_file_names(source_folder_positions, method=method, runs=list(range(3, 4)))
@@ -212,7 +213,7 @@ elif experiment == '20180724 lev 9':
     # interval_width_zoom = [1]
     # fo = [715]
 
-    runs = [30]
+    runs = [17]
 
     position_file_names = get_position_file_names(source_folder_positions, method=method, runs=runs)
 
@@ -242,13 +243,15 @@ for i, filename in enumerate(position_file_names):
                                               interval_width=interval_width[i],
                                               interval_width_zoom=interval_width_zoom[i],
                                               fo=fo[i], method=method,n_smooth=n_smooth)
+
+        print('mode found', freqs_new)
         freqs.update(freqs_new)
 
 
         if not os.path.exists(image_folder):
             os.mkdir(image_folder)
 
-        print('saving')
+        print('saving image')
         # save figure
         image_filename = os.path.join(image_folder, filename.replace('.dat', '-' + mode + '-fft.png'))
         fig.savefig(image_filename)
