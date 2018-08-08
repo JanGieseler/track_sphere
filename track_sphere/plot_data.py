@@ -719,7 +719,7 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
 
 
     for i, filename in enumerate(position_file_names):
-        run = int(filename.split(tag)[1].split('-')[0])
+        run = int(filename.split(tag)[1].split('-')[0].strip('_'))
         if verbose:
             print(filename, run)
         data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
@@ -792,12 +792,13 @@ def spectra_2D_map(position_file_names,source_folder_positions=None, modes='xy',
 
     psd_data = {'y_axis':[]}
     for i, filename in enumerate(position_file_names):
-        run = int(filename.split(tag)[1].split('-')[0])
+        run = int(filename.split(tag)[1].split('-')[0].strip('_'))
         if verbose:
             print(filename, run)
         data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
         dt = 1./info['info']['FrameRate']
-
+        if verbose:
+            print('FrameRate', info['info']['FrameRate'])
         if y_axis == '':
             psd_data['y_axis'].append(i)
         elif y_axis == 'run':
@@ -826,10 +827,13 @@ def spectra_2D_map(position_file_names,source_folder_positions=None, modes='xy',
             x -= np.mean(x)
             if nmax is not None:
                 x = x[0:nmax]
+
             f, p = power_spectral_density(x, time_step=dt, frequency_range=frequency_range)
             p = avrg(p, navrg)
+
             if mode in psd_data:
-                psd_data[mode] = np.vstack([psd_data[mode], p])
+
+                psd_data[mode] = np.vstack([psd_data[mode],p])
             else:
                 psd_data[mode] = p
 

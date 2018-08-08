@@ -749,9 +749,10 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
         k_size_close = parameters['k_size_close']
         threshold_type = parameters['threshold_type']
 
-
         if parameters['normalize']:
             # dst = np.zeros(shape=np.shape(frame_out))
+
+
             gray = cv.normalize(gray, None, 0, 255, norm_type=cv.NORM_MINMAX)
 
         if threshold_type == 'gauss':
