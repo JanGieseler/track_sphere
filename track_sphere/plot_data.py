@@ -568,6 +568,7 @@ def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_fra
         P.append(p)
         F.append(f[np.argmax(p)])
 
+
     df = np.mean(np.diff(f))
 
     # now calculate the energy (P is in units of px^2/Hz or m^2/Hz)
@@ -589,13 +590,13 @@ def plot_timetrace_energy(x, time_step, window_length =1, start_frame=0, end_fra
         return fig, ax
 
 
-def plot_fit_exp_decay(t, x, t_min=0, t_max=None, return_data=False, axes=None, verbose=False):
+def plot_fit_exp_decay(t, x, t_min=0, t_max=None, return_data=False, axes=None, verbose=False, log_plot = False):
     """
     plots the energy x over time between t_min and t_max and fits to an exponential decay
 
     Args:
         t:
-        x:
+        x:plot_get_ring_down_time
         t_min:
         t_max:
         return_data:
@@ -616,10 +617,14 @@ def plot_fit_exp_decay(t, x, t_min=0, t_max=None, return_data=False, axes=None, 
     else:
         fig = None
 
-    fit = fit_exp_decay(t, x, offset=True, verbose=verbose)
+    fit = fit_exp_decay(t2, x2, offset=True, verbose=verbose)
 
-    axes.plot(t2, x2, 'o')
-    axes.plot(t2, exp_offset(t2, *fit[0]))
+    if log_plot:
+        axes.semilogy(t2, x2, 'o')
+        axes.semilogy(t2, exp_offset(t2, *fit[0]))
+    else:
+        axes.plot(t2, x2, 'o')
+        axes.plot(t2, exp_offset(t2, *fit[0]))
     axes.set_xlabel('time (s)')
     axes.set_ylabel('energy')
 
@@ -753,6 +758,9 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
             d = avrg(d[1:] * 10 ** (off_set_factor * i), navrg)  # shift on a log scale to get the waterfall effect
             ax[a].semilogy(f, d, label=str(run), alpha=0.5)  # plot
 
+
+
+
     # if xlim is not None:
     #     assert len(xlim) == 2
     #     ax[0].set_xlim(xlim)
@@ -760,6 +768,36 @@ def waterfall(position_file_names,source_folder_positions=None, modes='xy', navr
         ax[a].set_title(mode + ' data')
     ax[a].set_xlabel('frequency (Hz)')
     plt.legend(loc=(1, 0.0))
+
+    return fig
+
+
+def plot_distribution(filename, source_folder_positions, method = 'fit_ellipse'):
+
+    data, info = load_time_trace(filename, source_folder_positions=source_folder_positions, verbose=False)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    for i, mode in enumerate('xy'):
+        x = data[method.lower().split('_')[-1] + ' ' + mode]
+        print(mode + ' standard dev: ', np.std(x))
+        if isinstance(min(x), float):
+            bins = 100
+        else:
+            bins = range(int(min(x) - 1), int(max(x) + 1))
+        axes[i].hist(x, bins=bins)
+        axes[i].set_xlabel('position ' + mode)
+        axes[i].set_title('std dev {:0.2f} px'.format(np.std(x)))
+
+    x, y = data[method.lower().split('_')[-1] + ' x'], data[method.lower().split('_')[-1] + ' y']
+    if isinstance(min(x), float):
+        bins_x, bins_y = 100, 100
+    else:
+        bins_x = range(int(min(x) - 1), int(max(x) + 1))
+        bins_y = range(int(min(y) - 1), int(max(y) + 1))
+    ret = axes[2].hist2d(x, y, bins=[bins_x, bins_y])
+    axes[2].set_xlabel('position x (px)')
+    axes[2].set_ylabel('position y (px)')
+
 
     return fig
 
@@ -856,7 +894,7 @@ def spectra_2D_map(position_file_names,source_folder_positions=None, modes='xy',
 
 def plot_get_ring_down_time(x, time_step,frequency_range, window_length, velocity_mode=True,
                  t_min=0, t_max=None, fo=None,  calib=1, magnet_diameter=1, density=7600,
-                 mode='', return_fig=False):
+                 mode='', return_fig=False, log_plot= False):
     """
 
     Args:
@@ -893,13 +931,17 @@ def plot_get_ring_down_time(x, time_step,frequency_range, window_length, velocit
 
     x_energy = power_to_energy_K(x_energy, radius=magnet_diameter / 2, frequency=fo, calibration_factor=calib,
                                  density=density, velocity_mode=velocity_mode)
-    fig1, ax, fit = plot_fit_exp_decay(t, x_energy, t_min=t_min, t_max=t_max, return_data=True)
+
+
+    fig1, ax, fit = plot_fit_exp_decay(t, x_energy, t_min=t_min, t_max=t_max, return_data=True, log_plot=log_plot)
 
 
 
     fig2, ax1, psd_data = plot_psd_vs_time(x=x, time_step=time_step, frequency_range=frequency_range,
                                           window_length=window_length,
                                           full_spectrum=False, return_data=True)
+
+    ax1[0].set_ylim([t_min, t_max])
 
 
     i_max = np.argmax(np.mean(psd_data['spectra'], axis=0))

@@ -798,6 +798,13 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
 
         frame_out = cv.bilateralFilter(frame_out, d=filter_dimension, borderType=cv.BORDER_ISOLATED, sigmaColor=sigmaColor, sigmaSpace=0)
 
+        if 'roi' in parameters:
+            roi = parameters['roi']
+
+            frame_out_2 = np.zeros(frame_out.shape, np.uint8)
+            frame_out_2[roi[0]:roi[0]+roi[2], roi[1]:roi[1]+roi[3]] = frame_out[roi[0]:roi[0]+roi[2], roi[1]:roi[1]+roi[3]]
+
+            frame_out = frame_out_2
 
 
             # frame_out = dst
@@ -915,7 +922,7 @@ def add_features_to_image(image, feature_list, verbose=False):
             cv.line(image, pt1, pt2, (255, 0, 0), 2)
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
-                          verbose = False, parameters=None):
+                          verbose = False, parameters=None, stop_at_bad_frame=True):
     """
     Takes a video file and outputs a new file where the background is substracted
     Args:
@@ -940,6 +947,8 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         method (str): 'BackgroundSubtractorMOG2', 'grabCut', 'Bright px', 'fit_ellipse', 'features_surf', 'optical_flow', 'fit_blobs'
         method_parameters: method specific parameters
+
+        stop_at_bad_frame: if True the loop stops when a bad frame that can not be read is encountered. If false skip frame and go to next
 
     Returns:
 
@@ -1173,7 +1182,12 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         else:
             skipped_frames.append(frame_idx)
-            continue # go to next iteration
+
+            if stop_at_bad_frame:
+                break
+            else:
+                continue # go to next iteration
+
 
         if output_images>0 and frame_idx%output_images==0:
             #convert to color if gray scale image

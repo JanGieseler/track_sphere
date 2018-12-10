@@ -28,7 +28,14 @@ case = 'extract top full mc110 20180801_Sample_9_Bead_2'
 case = 'extract top bright spot mc110 20180801_Sample_9_Bead_2'
 # case = 'extract top full mc110 20180802_Sample_9_Bead_2'
 case = 'extract top full mc110 20180806_Sample_9_Bead_2'
-
+# case = 'extract top bright spot mc110 20180806_Sample_9_Bead_2'
+case = 'extract top bright spot mc110 20180810_Sample_10_Bead_B2'
+case = 'extract top full mc110 20180821_Sample_10_Bead_F5'
+case = 'extract top bright spot mc110 20180821_Sample_10_Bead_F5'
+case = 'extract top full mc110 20180824_Sample_6_Bead_1'
+# case = 'extract top bright spot mc110 20180824_Sample_6_Bead_1'
+case = 'extract top full mc110 20180910_Sample_13_Bead_4'
+case = 'extract top bright spot mc110 20181204_Sample_14_Bead_3'
 process_parameters = {}
 
 ################################################################################
@@ -933,12 +940,14 @@ elif case == 'extract top full mc110 20180806_Sample_9_Bead_2':
     ################################################################################
     extraction_parameters = {'method': method}
     process_parameters = {'process_method': process_method}
-    process_parameters['k_size_close'] = 13  # 11 default
-    process_parameters['k_size_noise'] = 7  # 3 default
-    process_parameters['c'] = 5  # 11 default
+    process_parameters['k_size_close'] = 7  # 11 default 7 for 52, 53
+    process_parameters['k_size_noise'] = 3  # 3 default
+    process_parameters['c'] = 11  # 11 default,  11 for 52, 53
     # process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
     process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
-    process_parameters['blockSize'] = 35  # 35 default
+    process_parameters['blockSize'] = 91  # 35 default
+    process_parameters['blockSize'] = 51  # 35 default,  51 for 52, 53
+    # process_parameters['blockSize'] =   # 35 default
     process_parameters['normalize'] = True  # default True
 
 
@@ -952,7 +961,7 @@ elif case == 'extract top full mc110 20180806_Sample_9_Bead_2':
     # source folder
     folder_in = '../raw_data/20180806_Sample_9_Bead_2/'
     runs = list(range(3,5))
-    run = 1
+    run = 58
     runs = list(range(run, run + 1))
 
     video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
@@ -962,6 +971,452 @@ elif case == 'extract top full mc110 20180806_Sample_9_Bead_2':
     print('video_files', video_files)
 
     # video_files = video_files[96:]
+elif case == 'extract top bright spot mc110 20180806_Sample_9_Bead_2':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+    # output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    # max_frame = int(1e6)
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+
+    # processed_data
+    folder_out = '../processed_data/20180806_Sample_9_Bead_2/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    # option 2 select roi
+    process_method = 'bilateral'
+    process_parameters = {'process_method': process_method}
+    process_parameters['filter_dimension'] = 9  # default 5
+    process_parameters['sigmaColor'] = 120  # default 50
+    process_parameters['sigmaSpace'] = 120  # default 50
+    process_parameters['normalize'] = True  # default True
+
+
+
+    #source folder
+    folder_in = '../raw_data/20180806_Sample_9_Bead_2/'
+    runs = list(range(1,12))
+    run = 46
+    runs = list(range(run, run+2))
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_2_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract top bright spot mc110 20180810_Sample_10_Bead_B2':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+    # output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    # max_frame = int(1e6)
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+
+    # processed_data
+    folder_out = '../processed_data/201800820_Sample_10_Bead_B2/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    # option 2 select roi
+    process_method = 'bilateral'
+    process_parameters = {'process_method': process_method}
+    process_parameters['filter_dimension'] = 9  # default 5
+    process_parameters['sigmaColor'] = 120  # default 50
+    process_parameters['sigmaSpace'] = 120  # default 50
+    process_parameters['normalize'] = True  # default True
+
+    process_parameters['roi'] = (22, 22, 20, 20)  # default (60, 60, 30, 30)
+
+
+
+    #source folder
+    folder_in = '../raw_data/201800820_Sample_10_Bead_B2/'
+    runs = list(range(1,12))
+    run = 1
+    runs = list(range(run, run+1))
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_B2_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract top full mc110 20180821_Sample_10_Bead_F5':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    ################################################################################
+    method = 'fit_ellipse'
+
+    export_video = False
+    output_fps = 2
+    output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+    process_method = 'morph'
+
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    process_parameters = {'process_method': process_method}
+    process_parameters['k_size_close'] = 11  # 11 default 7 for 52, 53
+    process_parameters['k_size_noise'] = 5  # 3 default
+    process_parameters['c'] = 11  # 11 default,  11 for 52, 53
+    # process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
+    process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    process_parameters['blockSize'] = 91  # 35 default
+    process_parameters['blockSize'] = 51  # 35 default,  51 for 52, 53
+    # process_parameters['blockSize'] =   # 35 default
+    process_parameters['normalize'] = True  # default True
+
+
+    # processed_data
+    folder_out = '../processed_data/201800821_Sample_10_Bead_F5/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+
+    # source folder
+    folder_in = '../raw_data/201800821_Sample_10_Bead_F5/'
+    runs = list(range(3,5))
+    run = 1
+    runs = list(range(run, run + 1))
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_F5_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract top bright spot mc110 20180821_Sample_10_Bead_F5':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+    # output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    # max_frame = int(1e6)
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+
+    # processed_data
+    folder_out = '../processed_data/20180821_Sample_10_Bead_F5/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    # option 2 select roi
+    process_method = 'bilateral'
+    process_parameters = {'process_method': process_method}
+    process_parameters['filter_dimension'] = 9  # default 5
+    process_parameters['sigmaColor'] = 120  # default 50
+    process_parameters['sigmaSpace'] = 120  # default 50
+    process_parameters['normalize'] = True  # default True
+
+    process_parameters['roi'] = (22, 22, 20, 20)  # default (60, 60, 30, 30)
+
+
+
+    # source folder
+    folder_in = '../raw_data/201800821_Sample_10_Bead_F5/'
+    runs = list(range(3,5))
+    run = 1
+    runs = list(range(run, run + 1))
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_F5_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract top full mc110 20180824_Sample_6_Bead_1':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    ################################################################################
+    method = 'fit_ellipse'
+
+    export_video = False
+    output_fps = 2
+    output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+    process_method = 'morph'
+
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    process_parameters = {'process_method': process_method}
+    # process_parameters['k_size_close'] = 11  # 11 default 7 for 52, 53
+    process_parameters['k_size_close'] = 11  # 11 default 7 for 52, 53
+    process_parameters['k_size_noise'] = 5  # 3 default
+    process_parameters['c'] = 11  # 11 default,  11 for 52, 53
+    # process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
+    process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    process_parameters['blockSize'] = 121  # 35 default, 171 (71 for 48)
+    # process_parameters['blockSize'] = 51  # 35 default,  51 for 52, 53
+    # process_parameters['blockSize'] =   # 35 default
+    process_parameters['normalize'] = True  # default True
+
+
+    # processed_data
+    folder_out = '../processed_data/20180824_Sample_6_Bead_1/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+
+    # source folder
+    folder_in = '../raw_data/20180824_Sample_6_Bead_1/'
+    runs = list(range(3,5))
+    run = 61
+    runs = list(range(run, run +1))
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract top bright spot mc110 20180824_Sample_6_Bead_1':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+    # output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    # max_frame = int(1e6)
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+
+    folder_out = '../processed_data/20180824_Sample_6_Bead_1/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+
+    # source folder
+    folder_in = '../raw_data/20180824_Sample_6_Bead_1/'
+
+
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    # option 2 select roi
+    process_method = 'bilateral'
+    process_parameters = {'process_method': process_method}
+    process_parameters['filter_dimension'] = 9  # default 5
+    process_parameters['sigmaColor'] = 120  # default 50
+    process_parameters['sigmaSpace'] = 120  # default 50
+    process_parameters['normalize'] = True  # default True
+
+    # process_parameters['roi'] = (1, 22, 30, 30)  # default (60, 60, 30, 30)
+    process_parameters['roi'] = (1, 11, 30, 40)  # default (60, 60, 30, 30)
+    # process_parameters['roi'] = (76, 76, 40, 40)  # default (60, 60, 30, 30)
+
+    # max_frame = 100000
+
+    # source folder
+    folder_in = '../raw_data/20180824_Sample_6_Bead_1/'
+    runs = list(range(3,5))
+    run = 52
+    runs = list(range(run, run + 1))
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_1_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract top full mc110 20180910_Sample_13_Bead_4':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    ################################################################################
+    method = 'fit_ellipse'
+
+    export_video = False
+    output_fps = 2
+    output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+    process_method = 'morph'
+
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    process_parameters = {'process_method': process_method}
+    # process_parameters['k_size_close'] = 11  # 11 default 7 for 52, 53
+    process_parameters['k_size_close'] = 11  # 11 default 7 for 52, 53
+    process_parameters['k_size_noise'] = 7  # 3 default
+    process_parameters['c'] = 11  # 11 default,  11 for 52, 53
+    # process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
+    process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    process_parameters['blockSize'] = 151  # 35 default, (171 for 1)
+    # process_parameters['blockSize'] = 51  # 35 default,  51 for 52, 53
+    # process_parameters['blockSize'] =   # 35 default
+    process_parameters['normalize'] = True  # default True
+
+
+    # processed_data
+    folder_out = '../processed_data/20180910_Sample_13_Bead_4/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+
+    # source folder
+    folder_in = '../raw_data/20180910_Sample_13_Bead_4/'
+    runs = list(range(3,5))
+    run = 3
+    runs = list(range(run, run +1))
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_4_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract top bright spot mc110 20181204_Sample_14_Bead_3':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+    # output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    # max_frame = int(1e6)
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+
+    folder_out = '../processed_data/20181204_Sample_14_Bead_3/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+
+    # source folder
+    folder_in = '../raw_data/20181204_Sample_14_Bead_3/'
+
+
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    # option 2 select roi
+    process_method = 'bilateral'
+    process_parameters = {'process_method': process_method}
+    process_parameters['filter_dimension'] = 9  # default 5
+    process_parameters['sigmaColor'] = 120  # default 50
+    process_parameters['sigmaSpace'] = 120  # default 50
+    process_parameters['normalize'] = True  # default True
+
+    # process_parameters['roi'] = (1, 22, 30, 30)  # default (60, 60, 30, 30)
+    process_parameters['roi'] = (10, 10, 40, 40)  # default (60, 60, 30, 30)
+    # process_parameters['roi'] = (76, 76, 40, 40)  # default (60, 60, 30, 30)
+
+    # runs = list(range(3,5))
+    run = 1
+    runs = list(range(run, run + 1))
+
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    # print(video_files)
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_3_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+
+
 elif case == 'test':
     ################################################################################
     ## method settings ###
