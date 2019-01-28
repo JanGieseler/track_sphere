@@ -1,6 +1,8 @@
 # This batch script extracts the position information from video files and writes them into a .csv file
 # meta data is also saved into a .json file
 
+# this file contains the setting for extracting videos on the Jan's Mac starting until December 10th 2018
+
 import os
 from glob import glob
 from track_sphere.extract_data_opencv import *

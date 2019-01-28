@@ -370,16 +370,21 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
         #               ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.radians(ellipse[2]))
         #           ],dtype=int))
         # across
-        maj_ax = (
-            np.asarray([
-                ellipse[0][0] + 0.5 * ellipse[1][0] * np.cos(np.radians(ellipse[2])),
-                ellipse[0][1] + 0.5 * ellipse[1][0] * np.sin(np.radians(ellipse[2]))
-            ], dtype=int),
-            np.asarray([
-                ellipse[0][0] + 0.5*ellipse[1][0] * np.cos(np.pi+np.radians(ellipse[2])),
-                ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.pi+np.radians(ellipse[2]))
-            ],dtype=int)
-        )
+
+
+        if not ellipse[0][0] is None:
+            maj_ax = (
+                np.asarray([
+                    ellipse[0][0] + 0.5 * ellipse[1][0] * np.cos(np.radians(ellipse[2])),
+                    ellipse[0][1] + 0.5 * ellipse[1][0] * np.sin(np.radians(ellipse[2]))
+                ], dtype=int),
+                np.asarray([
+                    ellipse[0][0] + 0.5*ellipse[1][0] * np.cos(np.pi+np.radians(ellipse[2])),
+                    ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.pi+np.radians(ellipse[2]))
+                ],dtype=int)
+            )
+        else:
+            maj_ax = None
 
         features = [
             Feature('contour', contour_magnet, None),
@@ -916,10 +921,10 @@ def add_features_to_image(image, feature_list, verbose=False):
             pt2 = tuple(feature.data[2:4])
             cv.rectangle(image, pt1, pt2, (255, 0, 0), 1)
         elif feature.type == 'line':
-            # if verbose:
-            pt1 = tuple(feature.data[0])
-            pt2 = tuple(feature.data[1])
-            cv.line(image, pt1, pt2, (255, 0, 0), 2)
+            if feature.data is not None:
+                pt1 = tuple(feature.data[0])
+                pt2 = tuple(feature.data[1])
+                cv.line(image, pt1, pt2, (255, 0, 0), 2)
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
                           verbose = False, parameters=None, stop_at_bad_frame=True):
