@@ -7,37 +7,39 @@ import os
 from glob import glob
 from track_sphere.extract_data_opencv import *
 
-
+# raw_data_path = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/'
+raw_data_path = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/'
+folder_out_base_path = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/'
 # select one of the cases, case specific parameters are defined below
 case = 'extract all 20180628_Sample_6_bead_1'
-# case = 'extract all 20180628_Sample_6_bead_1 sideview'
-# case = 'create video relevitate'
-# case = 'create video oscillation rotation'
-# case = 'extract top view full 20180710_M110_Sample_6_Bead_1'
-case = 'extract sideview spot 20180710_M110_Sample_6_Bead_1'
-# case = 'test'
-
+# # case = 'extract all 20180628_Sample_6_bead_1 sideview'
+# # case = 'create video relevitate'
+# # case = 'create video oscillation rotation'
+# # case = 'extract top view full 20180710_M110_Sample_6_Bead_1'
 # case = 'extract sideview spot 20180710_M110_Sample_6_Bead_1'
-case = 'extract top view full 20180718_M110_Sample_6_Bead_1'
-case = 'extract sideview spot 20180718_M110_Sample_6_Bead_1'
-case = 'extract top view full 20180724_M110_Sample_6_Bead_1'
-case = 'extract top bright spot 20180724_M110_Sample_6_Bead_1'
-case = 'extract top bright spot ueye 20180724_M110_Sample_6_Bead_1'
-
-case = 'extract top bright spot mc110 20180731_Sample_9_Bead_2'
-# case = 'extract top full mc110 20180731_Sample_9_Bead_2'
-case = 'extract top full mc110 20180801_Sample_9_Bead_2'
-case = 'extract top bright spot mc110 20180801_Sample_9_Bead_2'
-# case = 'extract top full mc110 20180802_Sample_9_Bead_2'
-case = 'extract top full mc110 20180806_Sample_9_Bead_2'
-# case = 'extract top bright spot mc110 20180806_Sample_9_Bead_2'
-case = 'extract top bright spot mc110 20180810_Sample_10_Bead_B2'
-case = 'extract top full mc110 20180821_Sample_10_Bead_F5'
-case = 'extract top bright spot mc110 20180821_Sample_10_Bead_F5'
-case = 'extract top full mc110 20180824_Sample_6_Bead_1'
-# case = 'extract top bright spot mc110 20180824_Sample_6_Bead_1'
-case = 'extract top full mc110 20180910_Sample_13_Bead_4'
-case = 'extract top bright spot mc110 20181204_Sample_14_Bead_3'
+# # case = 'test'
+#
+# # case = 'extract sideview spot 20180710_M110_Sample_6_Bead_1'
+# case = 'extract top view full 20180718_M110_Sample_6_Bead_1'
+# case = 'extract sideview spot 20180718_M110_Sample_6_Bead_1'
+# case = 'extract top view full 20180724_M110_Sample_6_Bead_1'
+# case = 'extract top bright spot 20180724_M110_Sample_6_Bead_1'
+# case = 'extract top bright spot ueye 20180724_M110_Sample_6_Bead_1'
+#
+# case = 'extract top bright spot mc110 20180731_Sample_9_Bead_2'
+# # case = 'extract top full mc110 20180731_Sample_9_Bead_2'
+# case = 'extract top full mc110 20180801_Sample_9_Bead_2'
+# case = 'extract top bright spot mc110 20180801_Sample_9_Bead_2'
+# # case = 'extract top full mc110 20180802_Sample_9_Bead_2'
+# case = 'extract top full mc110 20180806_Sample_9_Bead_2'
+# # case = 'extract top bright spot mc110 20180806_Sample_9_Bead_2'
+# case = 'extract top bright spot mc110 20180810_Sample_10_Bead_B2'
+# case = 'extract top full mc110 20180821_Sample_10_Bead_F5'
+# case = 'extract top bright spot mc110 20180821_Sample_10_Bead_F5'
+# case = 'extract top full mc110 20180824_Sample_6_Bead_1'
+# # case = 'extract top bright spot mc110 20180824_Sample_6_Bead_1'
+# case = 'extract top full mc110 20180910_Sample_13_Bead_4'
+# case = 'extract top bright spot mc110 20181204_Sample_14_Bead_3'
 process_parameters = {}
 
 ################################################################################
@@ -109,7 +111,9 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
     process_method = 'morph'
 
     # processed_data
-    folder_out = '../processed_data/position_data'
+    # folder_out = '../processed_data/position_data'
+    folder_out = folder_out_base_path + '20180628_Sample_6_bead_1'
+
     ################################################################################
     ## end settings ###
     ################################################################################
@@ -140,12 +144,23 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
     # extraction_parameters['k_size_close'] = 5  # 11 default
     # extraction_parameters['k_size_noise'] = 3  # 3 default
     #source folder
-    folder_in = '../raw_data/20180628_Sample_6_Bead_1/'
+    # folder_in = '../raw_data/20180628_Sample_6_Bead_1/'
+    # raw_data_path = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_Bead_1/'
+
+    folder_in = raw_data_path+'20180628_Sample_6_Bead_1/'
+
+    # folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_Bead_1/*.avi'
 
 
-
-
-    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    #
+    # print('=== folder_in', folder_in)
+    # print(glob(folder_in))
+    # print('bbb', glob(
+    #     '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_Bead_1/*.avi'))
+    # print('aaa', glob('/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_bead_1/*.avi'))
+    # print('bbb', glob('/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_Bead_1/*.avi'))
+    # video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(glob(folder_in+'*.avi'))
 
     f = video_files[0]
     print(f.split('.avi')[0].split('Bead_1_'))

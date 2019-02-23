@@ -270,8 +270,6 @@ def get_rotation_frequency_fit_slope(data, info, n_avrg=1, n_avrg_unwrapped=1, w
     else:
         return return_dict
 
-
-
 def get_calibration_factor(data, particle_diameter, verbose=False):
     """
     calculates the calibration factor assuming that the particle is roughly spherical
@@ -412,7 +410,7 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
     else:
         return return_dict
 
-def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bead_1', runs = None , verbose = False):
+def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bead_1', runs = None , verbose = True):
     """
 
     Args:
@@ -429,9 +427,15 @@ def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bea
         print('files found:', position_file_names)
 
     if runs is not None:
-        position_file_names = [f for f in position_file_names if int(f.split('-')[0].split(tag)[1].split('_')[1]) in runs]
+#         position_file_names = [f for f in position_file_names if int(f.split('-')[0].split(tag)[1].split('_')[1]) in runs]
+        position_file_names = [f for f in position_file_names if int(f.split('-'+method)[0].split('_')[-1]) in runs]
+    print('position file names: ', position_file_names)
     position_file_names = sorted(position_file_names,
-                                 key=lambda f: int(f.split('-')[0].split(tag)[1].split('_')[1]))
+                                 key=lambda f: int(f.split('-')[0].split('_')[-1]))
+
+    if verbose:
+        print('position file names to return: ', position_file_names)
+
     return position_file_names
 
 def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width=None, interval_width_zoom=0.1, fo=None,
@@ -731,7 +735,7 @@ def find_peaks_in_psd(psd_data, fmin=0, fmax=None, nbin=1, max_number_of_peaks=1
 
     Args:
         psd_data:
-        fmin:
+        fmin: minimum frequency to plot
         fmax:
         nbin:
         max_number_of_peaks:

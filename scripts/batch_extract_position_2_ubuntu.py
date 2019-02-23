@@ -11,9 +11,12 @@ from track_sphere.extract_data_opencv import *
 # select one of the cases, case specific parameters are defined below
 case = 'extract all 20180628_Sample_6_bead_1'
 case = 'extract top bright spot mc110 20181204_Sample_14_Bead_3'
-case = 'extract top bright spot mc110 20191015_Sample_14_Bead_6'
+case = 'extract top bright spot mc110 20190115_Sample_14_Bead_6'
+case = 'extract fit ellipse spot mc110 20190115_Sample_14_Bead_6'
 case = 'extract top bright spot mc110 20190125_Sample_14_Bead_6'
-
+# case = 'extract fit ellipse spot mc110 20190125_Sample_14_Bead_6'
+case = 'extract top bright spot mc110 20190129_Sample_14_Bead_6'
+case = 'extract top bright spot mc110 20190130_Sample_14_Bead_6'
 process_parameters = {}
 
 ################################################################################
@@ -127,7 +130,7 @@ elif case == 'extract top bright spot mc110 20181204_Sample_14_Bead_3':
     # print('video_files', video_files)
 
     # video_files = video_files[96:]
-elif case == 'extract top bright spot mc110 20191015_Sample_14_Bead_6':
+elif case == 'extract top bright spot mc110 20190115_Sample_14_Bead_6':
     ################################################################################
     ## method settings ###
     ################################################################################
@@ -147,8 +150,8 @@ elif case == 'extract top bright spot mc110 20191015_Sample_14_Bead_6':
     min_frame = 0
 
 
-    folder_out = '../processed_data/20191015_Sample_14_Bead_6/position_data'
-    folder_out = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/20191015_Sample_14_Bead_6'
+    folder_out = '../processed_data/20190115_Sample_14_Bead_6/position_data'
+    folder_out = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/20190115_Sample_14_Bead_6'
     ################################################################################
     ## end settings ###
     ################################################################################
@@ -156,7 +159,7 @@ elif case == 'extract top bright spot mc110 20191015_Sample_14_Bead_6':
 
     # source folder
     # folder_in = '../raw_data/20181204_Sample_14_Bead_3/'
-    folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20191015_Sample_14_Bead_6'
+    folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20190115_Sample_14_Bead_6'
 
 
     ################################################################################
@@ -190,27 +193,90 @@ elif case == 'extract top bright spot mc110 20191015_Sample_14_Bead_6':
     print('video_files', video_files)
 
     # video_files = video_files[96:]
+elif case == 'extract fit ellipse spot mc110 20190115_Sample_14_Bead_6':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'fit_ellipse'
+
+    export_video = False
+    output_fps = 2
+    output_images = 10
+    # output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    max_frame = None
+    max_frame = 10
+    min_frame = 1000
+    min_frame = 0
+
+    process_method = 'morph'
+
+    #   folder_out = '../processed_data/20190125_Sample_14_Bead_6/position_data'
+    folder_out = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/20190115_Sample_14_Bead_6'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+    # source folder
+    # folder_in = '../raw_data/20181204_Sample_14_Bead_3/'
+    folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20190115_Sample_14_Bead_6'
+
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    process_parameters = {'process_method': process_method}
+    process_parameters['k_size_close'] = 21  # 11 default
+    process_parameters['k_size_noise'] = 3  # 3 default
+    process_parameters['c'] = 5  # 11 default
+    process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
+    process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    process_parameters['blockSize'] = 71  # 35 default
+
+    # process_parameters['threshold_type'] = 'gauss'  # default is mean maxval
+    # process_parameters['maxval'] = 255  # default is 255
+
+    ################################################################################
+    #### preprocessing morph parameters
+    ################################################################################
+
+    extraction_parameters['convex_hull'] = True
+
+    # runs = list(range(3,5))
+    run = 1
+    runs = list(range(run, run + 1))
+
+    # runs = [2,4,5,7]
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    print(video_files)
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_6_run_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
 elif case == 'extract top bright spot mc110 20190125_Sample_14_Bead_6':
     ################################################################################
     ## method settings ###
     ################################################################################
+
     method = 'Bright px'
 
     export_video = False
     output_fps = 2
-    output_images = 1000
+    output_images = 1
     # output_images = 10000
     # output_images = 1
 
     # max_frame = 25000
     # max_frame = int(1e6)
-    max_frame = None
+    max_frame = 10
     # max_frame = 10
     # min_frame = 1000
     min_frame = 0
 
-
-    folder_out = '../processed_data/20190125_Sample_14_Bead_6/position_data'
+ #   folder_out = '../processed_data/20190125_Sample_14_Bead_6/position_data'
     folder_out = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/20190125_Sample_14_Bead_6'
     ################################################################################
     ## end settings ###
@@ -221,6 +287,129 @@ elif case == 'extract top bright spot mc110 20190125_Sample_14_Bead_6':
     # folder_in = '../raw_data/20181204_Sample_14_Bead_3/'
     folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20190125_Sample_14_Bead_6'
 
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    # option 2 select roi
+    process_method = 'bilateral'
+    process_parameters = {'process_method': process_method}
+    process_parameters['filter_dimension'] = 9  # default 5
+    process_parameters['sigmaColor'] = 120  # default 50
+    process_parameters['sigmaSpace'] = 120  # default 50
+    process_parameters['normalize'] = True  # default True
+
+    # process_parameters['roi'] = (1, 22, 30, 30)  # default (60, 60, 30, 30)
+    process_parameters['roi'] = (80, 80, 80, 80)  # default (60, 60, 30, 30)
+    # process_parameters['roi'] = (76, 76, 40, 40)  # default (60, 60, 30, 30)
+
+    # runs = list(range(3,5))
+    run = 2
+    runs = list(range(run, run + 1))
+
+    # runs = [2,4,5,7]
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    print(video_files)
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_6_run_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+
+    # video_files = video_files[96:]
+elif case == 'extract fit ellipse spot mc110 20190125_Sample_14_Bead_6':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'fit_ellipse'
+
+    export_video = False
+    output_fps = 2
+    output_images = 1000
+    output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+    process_method = 'morph'
+
+    #   folder_out = '../processed_data/20190125_Sample_14_Bead_6/position_data'
+    folder_out = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/20190125_Sample_14_Bead_6'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+    # source folder
+    # folder_in = '../raw_data/20181204_Sample_14_Bead_3/'
+    folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20190125_Sample_14_Bead_6'
+
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    process_parameters = {'process_method': process_method}
+    process_parameters['k_size_close'] = 13  # 11 default
+    process_parameters['k_size_noise'] = 3  # 3 default
+    process_parameters['c'] = 5  # 11 default
+    process_parameters['select_contour'] = 'all'  # 'longest' default (other option is 'all')
+    process_parameters['select_contour'] = 'longest'  # 'longest' default (other option is 'all')
+    process_parameters['blockSize'] = 71  # 35 default
+
+    # process_parameters['threshold_type'] = 'gauss'  # default is mean maxval
+    # process_parameters['maxval'] = 255  # default is 255
+
+    ################################################################################
+    #### preprocessing morph parameters
+    ################################################################################
+
+    extraction_parameters['convex_hull'] = True
+
+    # runs = list(range(3,5))
+    run = 2
+    runs = list(range(run, run + 1))
+
+    # runs = [2,4,5,7]
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    print(video_files)
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_6_run_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
+elif case == 'extract top bright spot mc110 20190129_Sample_14_Bead_6':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+
+    method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+    output_images = 1
+    # output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    # max_frame = int(1e6)
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+ #   folder_out = '../processed_data/20190125_Sample_14_Bead_6/position_data'
+    folder_out = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/20190129_Sample_14_Bead_6'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+
+    # source folder
+    # folder_in = '../raw_data/20181204_Sample_14_Bead_3/'
+    folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20190129_Sample_14_Bead_6'
 
     ################################################################################
     ## end settings ###
@@ -235,7 +424,7 @@ elif case == 'extract top bright spot mc110 20190125_Sample_14_Bead_6':
     process_parameters['normalize'] = True  # default True
 
     # process_parameters['roi'] = (1, 22, 30, 30)  # default (60, 60, 30, 30)
-    process_parameters['roi'] = (32, 32, 96, 96)  # default (60, 60, 30, 30)
+    process_parameters['roi'] = (30, 30, 90, 90)  # default (60, 60, 30, 30)
     # process_parameters['roi'] = (76, 76, 40, 40)  # default (60, 60, 30, 30)
 
     # runs = list(range(3,5))
@@ -243,7 +432,6 @@ elif case == 'extract top bright spot mc110 20190125_Sample_14_Bead_6':
     runs = list(range(run, run + 1))
 
     # runs = [2,4,5,7]
-
 
     video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
     print(video_files)
@@ -253,6 +441,66 @@ elif case == 'extract top bright spot mc110 20190125_Sample_14_Bead_6':
     print('video_files', video_files)
 
     # video_files = video_files[96:]
+
+elif case == 'extract top bright spot mc110 20190130_Sample_14_Bead_6':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+
+    method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+    output_images = 1
+    # output_images = 10000
+    # output_images = 1
+
+    # max_frame = 25000
+    # max_frame = int(1e6)
+    max_frame = None
+    # max_frame = 10
+    # min_frame = 1000
+    min_frame = 0
+
+ #   folder_out = '../processed_data/20190125_Sample_14_Bead_6/position_data'
+    folder_out = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/20190130_Sample_14_Bead_6'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+
+
+    # source folder
+    # folder_in = '../raw_data/20181204_Sample_14_Bead_3/'
+    folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20190129_Sample_14_Bead_6'
+
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    # option 2 select roi
+    process_method = 'bilateral'
+    process_parameters = {'process_method': process_method}
+    process_parameters['filter_dimension'] = 9  # default 5
+    process_parameters['sigmaColor'] = 120  # default 50
+    process_parameters['sigmaSpace'] = 120  # default 50
+    process_parameters['normalize'] = True  # default True
+
+    # process_parameters['roi'] = (1, 22, 30, 30)  # default (60, 60, 30, 30)
+    process_parameters['roi'] = (30, 30, 90, 90)  # default (60, 60, 30, 30)
+    # process_parameters['roi'] = (76, 76, 40, 40)  # default (60, 60, 30, 30)
+
+    # runs = list(range(3,5))
+    run = 2
+    runs = list(range(run, run + 1))
+
+    # runs = [2,4,5,7]
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    print(video_files)
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_6_run_')[1].split('_')[0]) in runs])
+
+    print('video_files', video_files)
 
 ################################################################################
 #### run the script

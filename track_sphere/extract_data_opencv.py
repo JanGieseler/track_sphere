@@ -221,7 +221,6 @@ def fit_blobs(image, parameters, points, return_features=False, verbose=False):
 
     Returns:
         data, image with annotation
-
     """
 
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
@@ -301,7 +300,9 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     # expect a gray scale image
     assert len(np.shape(image_gray)) == 2
 
-    im2, contours, hierarchy = cv.findContours(image_gray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv.findContours(image_gray.copy(), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    # print('jkjklj', len(tmp))
+    # im2, contours, hierarchy = tmp
     hierarchy = hierarchy[0]
 
     # keep only the contours without a parent, i.e. only outer contours
@@ -1001,6 +1002,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             file_in_info = file_in_info.replace('.json', '.xml')
 
     # check if it really exists
+    print(file_in_info)
     assert os.path.exists(file_in_info)
 
 
@@ -1142,6 +1144,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         try:
             ret, frame_in = cap.read()
+
         except Exception as e:
             ret = False
 
@@ -1154,11 +1157,13 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
                 feature_list = []  # this keeps feature_list
 
             # preprocess image, e.g. thresholding, background subtraction
+
             frame_in_processed, fl = process_image(frame_in,
                                                    parameters=processing_parameters,
                                                    method_objects=method_objects,
                                                    return_features=return_image_features
                                                    )
+
             if return_image_features:
                 feature_list += [fl]
             # extract the parameters from the preprocessed image
