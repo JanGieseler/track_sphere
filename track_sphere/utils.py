@@ -410,7 +410,7 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
     else:
         return return_dict
 
-def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bead_1', runs = None , verbose = True):
+def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bead_1', runs = None , verbose = False):
     """
 
     Args:

@@ -333,7 +333,7 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
 
     # create empty dictionary
     data_dict = {'timestamp': [], 'freq_slope': [], 'err_slope': [], 'filename': [], 'id': [],
-                 'FrameCount':[], 'FrameRate':[], 'gamma_energy':[]}
+                 'FrameCount':[], 'FrameRate':[], 'gamma_energy':[], 'fo':[]}
 
 
     if experiment_begin is not None:
@@ -393,7 +393,10 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
                 data_dict['gamma_energy'].append(info['gamma_energy'])
             else:
                 data_dict['gamma_energy'].append(np.nan)
-
+            if 'fo' in info:
+                data_dict['fo'].append(info['fo'])
+            else:
+                data_dict['fo'].append(np.nan)
         elif 'Bright px' in info_in:
             info = info_in['Bright px']
             for mode in modes:
@@ -410,7 +413,10 @@ def load_info_to_dataframe(position_file_names, source_folder_positions, experim
                 data_dict['gamma_energy'].append(info['gamma_energy'])
             else:
                 data_dict['gamma_energy'].append(np.nan)
-
+            if 'fo' in info:
+                data_dict['fo'].append(info['fo'])
+            else:
+                data_dict['fo'].append(np.nan)
         else:
             for key in ['freq_slope', 'err_slope']:
                 data_dict[key].append(np.nan)
