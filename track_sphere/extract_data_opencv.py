@@ -224,7 +224,6 @@ def fit_blobs(image, parameters, points, return_features=False, verbose=False):
 
     Returns:
         data, image with annotation
-
     """
 
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
@@ -304,7 +303,9 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
     # expect a gray scale image
     assert len(np.shape(image_gray)) == 2
 
-    im2, contours, hierarchy = cv.findContours(image_gray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv.findContours(image_gray.copy(), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    # print('jkjklj', len(tmp))
+    # im2, contours, hierarchy = tmp
     hierarchy = hierarchy[0]
 
     # keep only the contours without a parent, i.e. only outer contours
@@ -373,16 +374,21 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
         #               ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.radians(ellipse[2]))
         #           ],dtype=int))
         # across
-        maj_ax = (
-            np.asarray([
-                ellipse[0][0] + 0.5 * ellipse[1][0] * np.cos(np.radians(ellipse[2])),
-                ellipse[0][1] + 0.5 * ellipse[1][0] * np.sin(np.radians(ellipse[2]))
-            ], dtype=int),
-            np.asarray([
-                ellipse[0][0] + 0.5*ellipse[1][0] * np.cos(np.pi+np.radians(ellipse[2])),
-                ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.pi+np.radians(ellipse[2]))
-            ],dtype=int)
-        )
+
+
+        if not ellipse[0][0] is None:
+            maj_ax = (
+                np.asarray([
+                    ellipse[0][0] + 0.5 * ellipse[1][0] * np.cos(np.radians(ellipse[2])),
+                    ellipse[0][1] + 0.5 * ellipse[1][0] * np.sin(np.radians(ellipse[2]))
+                ], dtype=int),
+                np.asarray([
+                    ellipse[0][0] + 0.5*ellipse[1][0] * np.cos(np.pi+np.radians(ellipse[2])),
+                    ellipse[0][1] + 0.5*ellipse[1][0] * np.sin(np.pi+np.radians(ellipse[2]))
+                ],dtype=int)
+            )
+        else:
+            maj_ax = None
 
         features = [
             Feature('contour', contour_magnet, None),
@@ -955,10 +961,10 @@ def add_features_to_image(image, feature_list, verbose=False):
             pt2 = tuple(feature.data[2:4])
             cv.rectangle(image, pt1, pt2, (255, 0, 0), 1)
         elif feature.type == 'line':
-            # if verbose:
-            pt1 = tuple(feature.data[0])
-            pt2 = tuple(feature.data[1])
-            cv.line(image, pt1, pt2, (255, 0, 0), 2)
+            if feature.data is not None:
+                pt1 = tuple(feature.data[0])
+                pt2 = tuple(feature.data[1])
+                cv.line(image, pt1, pt2, (255, 0, 0), 2)
 
 def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = None, buffer_time=1e-6,
                           verbose = False, parameters=None, stop_at_bad_frame=True):
@@ -1035,6 +1041,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
             file_in_info = file_in_info.replace('.json', '.xml')
 
     # check if it really exists
+    print(file_in_info)
     assert os.path.exists(file_in_info)
 
 
@@ -1176,6 +1183,7 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
 
         try:
             ret, frame_in = cap.read()
+
         except Exception as e:
             ret = False
 
@@ -1188,11 +1196,13 @@ def extract_position_data(file_in, file_out=None, min_frame = 0, max_frame = Non
                 feature_list = []  # this keeps feature_list
 
             # preprocess image, e.g. thresholding, background subtraction
+
             frame_in_processed, fl = process_image(frame_in,
                                                    parameters=processing_parameters,
                                                    method_objects=method_objects,
                                                    return_features=return_image_features
                                                    )
+
             if return_image_features:
                 feature_list += [fl]
             # extract the parameters from the preprocessed image

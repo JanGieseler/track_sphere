@@ -1,20 +1,21 @@
 # This batch script extracts the position information from video files and writes them into a .csv file
 # meta data is also saved into a .json file
 
+# this file contains the setting for extracting videos on the Jan's Mac starting until December 10th 2018
+
 import os
 from glob import glob
 from track_sphere.extract_data_opencv import *
 
-
+# raw_data_path = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/'
+raw_data_path = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/'
+folder_out_base_path = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/video_processed_data/'
 # select one of the cases, case specific parameters are defined below
 case = 'extract all 20180628_Sample_6_bead_1'
-# case = 'extract all 20180628_Sample_6_bead_1 sideview'
-# case = 'create video relevitate'
-# case = 'create video oscillation rotation'
-# case = 'extract top view full 20180710_M110_Sample_6_Bead_1'
-case = 'extract sideview spot 20180710_M110_Sample_6_Bead_1'
-# case = 'test'
-
+# # case = 'extract all 20180628_Sample_6_bead_1 sideview'
+# # case = 'create video relevitate'
+# # case = 'create video oscillation rotation'
+# # case = 'extract top view full 20180710_M110_Sample_6_Bead_1'
 # case = 'extract sideview spot 20180710_M110_Sample_6_Bead_1'
 case = 'extract top view full 20180718_M110_Sample_6_Bead_1'
 case = 'extract sideview spot 20180718_M110_Sample_6_Bead_1'
@@ -109,7 +110,9 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
     process_method = 'morph'
 
     # processed_data
-    folder_out = '../processed_data/position_data'
+    # folder_out = '../processed_data/position_data'
+    folder_out = folder_out_base_path + '20180628_Sample_6_bead_1'
+
     ################################################################################
     ## end settings ###
     ################################################################################
@@ -140,12 +143,23 @@ elif case == 'extract all 20180628_Sample_6_bead_1':
     # extraction_parameters['k_size_close'] = 5  # 11 default
     # extraction_parameters['k_size_noise'] = 3  # 3 default
     #source folder
-    folder_in = '../raw_data/20180628_Sample_6_Bead_1/'
+    # folder_in = '../raw_data/20180628_Sample_6_Bead_1/'
+    # raw_data_path = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_Bead_1/'
+
+    folder_in = raw_data_path+'20180628_Sample_6_Bead_1/'
+
+    # folder_in = '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_Bead_1/*.avi'
 
 
-
-
-    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    #
+    # print('=== folder_in', folder_in)
+    # print(glob(folder_in))
+    # print('bbb', glob(
+    #     '/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_Bead_1/*.avi'))
+    # print('aaa', glob('/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_bead_1/*.avi'))
+    # print('bbb', glob('/run/user/1000/gvfs/smb-share:server=fs2k02.rc.fas.harvard.edu,share=lukin_lab/Lab/Lev/videos/20180628_Sample_6_Bead_1/*.avi'))
+    # video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    video_files = sorted(glob(folder_in+'*.avi'))
 
     f = video_files[0]
     print(f.split('.avi')[0].split('Bead_1_'))
@@ -1553,8 +1567,6 @@ for f in video_files:
 
     if method == 'fit_blobs' and extraction_parameters['initial_points'] is None:
         extraction_parameters['initial_points'] = select_initial_points(file_in)
-
-    print(parameters)
 
     extract_position_data(file_in, file_out=file_out, min_frame=min_frame, max_frame=max_frame, verbose=False,
                           parameters=parameters)

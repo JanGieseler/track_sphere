@@ -107,6 +107,28 @@ def select_initial_points(file_in, frame = 0):
 
     return positions
 
+
+
+def power_spectral_densityX(x, time_step, freq_range = None):
+    """
+    returns the power spectral density of the time trace x which is sampled at intervals time_step
+    Args:
+        x (array):  timetrace
+        time_step (float): sampling interval of x
+        freq_range (array or tuple): frequency range in the form [f_min, f_max] to return only the spectrum within this range
+    Returns:
+    """
+    P = np.abs(np.fft.rfft(x))**2 * time_step**2 /len(x)
+    F = np.fft.rfftfreq(len(x), time_step)
+
+    if freq_range is not None:
+        brange = np.all([F>=freq_range[0], F<=freq_range[1]], axis = 0)
+        P = P[brange]
+        F = F[brange]
+
+    return F, P
+
+
 def power_spectral_density(x, time_step, frequency_range = None):
     """
     returns the *single sided* power spectral density of the time trace x which is sampled at intervals time_step
@@ -248,8 +270,6 @@ def get_rotation_frequency_fit_slope(data, info, n_avrg=1, n_avrg_unwrapped=1, w
     else:
         return return_dict
 
-
-
 def get_calibration_factor(data, particle_diameter, verbose=False):
     """
     calculates the calibration factor assuming that the particle is roughly spherical
@@ -390,7 +410,7 @@ def get_rotation_frequency(data, info, return_figure=False, exclude_percent=None
     else:
         return return_dict
 
-def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bead_1', runs = None):
+def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bead_1', runs = None , verbose = False):
     """
 
     Args:
@@ -403,11 +423,19 @@ def get_position_file_names(source_folder_positions, method, tag = 'Sample_6_Bea
     """
     # get all the files and sort them by the run number
     position_file_names = sorted([os.path.basename(f) for f in glob(source_folder_positions + '*-'+method+'.dat')])
+    if verbose:
+        print('files found:', position_file_names)
 
     if runs is not None:
-        position_file_names = [f for f in position_file_names if int(f.split('-')[0].split(tag)[1].split('_')[1]) in runs]
+#         position_file_names = [f for f in position_file_names if int(f.split('-')[0].split(tag)[1].split('_')[1]) in runs]
+        position_file_names = [f for f in position_file_names if int(f.split('-'+method)[0].split('_')[-1]) in runs]
+    print('position file names: ', position_file_names)
     position_file_names = sorted(position_file_names,
-                                 key=lambda f: int(f.split('-')[0].split(tag)[1].split('_')[1]))
+                                 key=lambda f: int(f.split('-')[0].split('_')[-1]))
+
+    if verbose:
+        print('position file names to return: ', position_file_names)
+
     return position_file_names
 
 def get_mode_frequency_fft(data, mode, info, return_figure=False, interval_width=None, interval_width_zoom=0.1, fo=None,
@@ -707,7 +735,7 @@ def find_peaks_in_psd(psd_data, fmin=0, fmax=None, nbin=1, max_number_of_peaks=1
 
     Args:
         psd_data:
-        fmin:
+        fmin: minimum frequency to plot
         fmax:
         nbin:
         max_number_of_peaks:
