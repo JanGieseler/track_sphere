@@ -11,6 +11,9 @@ from copy import deepcopy
 from track_sphere.utils import *
 import matplotlib.pyplot as plt
 
+from scipy.ndimage import gaussian_filter
+from scipy.ndimage.measurements import center_of_mass
+
 from track_sphere.read_write import load_video_info, load_video_info_xml
 
 # def optical_flow_features_surf(image_old, image, features, parameters):
@@ -399,7 +402,7 @@ def fit_ellipse(image_gray, parameters, return_features=False, verbose=False):
 
     return data, features
 
-def check_method_parameters(parameters, info=None, verbose=False):
+def check_method_parameters(parameters, info=None, verbose=True):
     """
 
     check the parameter and set to default the parameters that are missing
@@ -415,6 +418,8 @@ def check_method_parameters(parameters, info=None, verbose=False):
 
 
     assert 'extraction_parameters' in parameters
+
+    print('asssss', parameters)
 
     method = parameters['extraction_parameters']['method']
     if verbose:
@@ -487,6 +492,13 @@ def check_method_parameters(parameters, info=None, verbose=False):
 
             # if 'sigmaSpace' not in parameters['pre-processing']:
             #     parameters['sigmaSpace'] = 50
+        elif parameters['pre-processing']['process_method'] == 'smoothing':
+            print('Hallloooo')
+            if 'substract_min' not in parameters['pre-processing']:
+                parameters['substract_min'] = True
+            if 'filter_sigma' not in parameters['pre-processing']:
+                parameters['substract_min'] = 35
+
 
     else:
         parameters['pre-processing']['process_method'] = None
@@ -567,6 +579,9 @@ def check_method_parameters(parameters, info=None, verbose=False):
 
         assert len(np.shape(parameters['extraction_parameters']['initial_points'])) == 2
         assert len(parameters['extraction_parameters']['initial_points'][0]) == 2
+    elif method == 'center_of_mass':
+        # there are no parameters for this method, everything happens in prepocessing
+        pass
     else:
         print('unknown method. Abort', method)
         return None
@@ -612,6 +627,9 @@ def get_data_header(method_parameters, verbose=False):
                             'k{:d} size'.format(i),
                             'k{:d} angle'.format(i)]
                            for i in range(5)], [])
+    elif method == 'center_of_mass':
+        # the names of the data we will extract
+        data_header = ['com x', 'com y']
     else:
         print('unknown method. Abort')
         return None
@@ -636,6 +654,9 @@ def get_frame_data(frame, parameters, return_features=False, method_objects=None
     if method == 'Bright px':
         if len(np.shape(frame))==3:
             (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame[:, :, 0], None)
+
+            print('minLoc, maxLoc', maxLoc)
+            print('xo, yo', np.unravel_index(np.argmax(frame[:, :, 0]), frame[:, :, 0].shape))
         else:
             (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(frame[:, :], None)
         frame_data = [maxLoc[1], maxLoc[0]]
@@ -654,6 +675,14 @@ def get_frame_data(frame, parameters, return_features=False, method_objects=None
     elif method == 'moments_roi':
         points = method_objects['points']
         frame_data, features = moments_roi(frame, parameters=parameters, points=points, return_features=return_features, verbose=verbose)
+
+    elif method == 'center_of_mass':
+        if len(np.shape(frame))==3:
+            xo, yo = center_of_mass(frame[:, :, 0])
+        else:
+            xo, yo = center_of_mass(frame[:, :])
+        frame_data = [xo, yo]
+        features = [Feature('point', (yo, xo), None)]
 
     return frame_data, features
 
@@ -811,6 +840,16 @@ def process_image(frame, parameters, method_objects, verbose=False, return_featu
 
     elif parameters['process_method'] == None:
         frame_out = frame
+    elif parameters['process_method'] == 'smoothing':
+        frame_out = gaussian_filter(1.*frame, parameters['filter_sigma']) # multipy by float to convert from int to float
+        if parameters['substract_min'] == True:
+
+            frame_out -= np.min(frame_out)
+
+            frame_out *= 255 / np.max(frame_out)
+            print(frame_out.shape)
+            # pd.DataFrame(frame_out[:,:,0]).to_csv('../tmp_data_XX.csv')
+
     else:
         raise KeyError('did not find process_method')
 

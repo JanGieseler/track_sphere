@@ -36,6 +36,8 @@ case = 'extract top full mc110 20180824_Sample_6_Bead_1'
 # case = 'extract top bright spot mc110 20180824_Sample_6_Bead_1'
 case = 'extract top full mc110 20180910_Sample_13_Bead_4'
 case = 'extract top bright spot mc110 20181204_Sample_14_Bead_3'
+
+case = 'extract high NA fit ellipse 20190814_Sample_23_Bead_5'
 process_parameters = {}
 
 ################################################################################
@@ -1417,6 +1419,59 @@ elif case == 'extract top bright spot mc110 20181204_Sample_14_Bead_3':
     # video_files = video_files[96:]
 
 
+elif case == 'extract high NA fit ellipse 20190814_Sample_23_Bead_5':
+    ################################################################################
+    ## method settings ###
+    ################################################################################
+    method = 'center_of_mass'
+    # method = 'Bright px'
+
+    export_video = False
+    output_fps = 2
+    output_images = 1000
+    output_images = 10000
+    output_images = 1
+
+    # max_frame = 25000
+    # max_frame = None
+    max_frame = 2
+    # min_frame = 1000
+    min_frame = 0
+
+    process_method = 'smoothing'
+
+    # processed_data
+    folder_out = '../processed_data/position_data'
+    ################################################################################
+    ## end settings ###
+    ################################################################################
+    extraction_parameters = {'method': method}
+    process_parameters = {'process_method': process_method}
+    process_parameters['substract_min'] = True  # True default
+    process_parameters['filter_sigma'] = 50  # 35 default
+    # process_parameters['scale_min_max'] = True  # True default
+
+    folder_in = '../raw_data/20190814_Sample_23_Bead_5/'
+
+
+
+    # runs = list(range(3,5))
+    run = 1
+    runs = list(range(run, run + 1))
+
+
+    video_files = sorted(glob(os.path.join(folder_in, '*.avi')))
+    print(video_files)
+    print([f.split('.avi')[0].split('Bead_5_run')[1].split('_')[1] for f in video_files ])
+    # print(video_files)
+    video_files = sorted(
+        [f for f in video_files if int(f.split('.avi')[0].split('Bead_5_run')[1].split('_')[1]) in runs])
+
+    # video_files = [video_files[18]]
+    # video_files = video_files[96:]
+    # video_files = video_files[71:72]
+    print(video_files)
+
 elif case == 'test':
     ################################################################################
     ## method settings ###
@@ -1498,6 +1553,8 @@ for f in video_files:
 
     if method == 'fit_blobs' and extraction_parameters['initial_points'] is None:
         extraction_parameters['initial_points'] = select_initial_points(file_in)
+
+    print(parameters)
 
     extract_position_data(file_in, file_out=file_out, min_frame=min_frame, max_frame=max_frame, verbose=False,
                           parameters=parameters)
